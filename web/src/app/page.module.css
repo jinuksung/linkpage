@@ -38,7 +38,14 @@
   background: #fff;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   z-index: 2;
-  font-size: 18px;
+  display: grid;
+  place-items: center;
+  color: #3f4752;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
 }
 
 .leftBtn {

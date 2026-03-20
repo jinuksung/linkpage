@@ -34,10 +34,17 @@ export default function LinkPage() {
     <main className={styles.page}>
       <section className={styles.heroWrap}>
         <button className={`${styles.floatBtn} ${styles.leftBtn}`} aria-label="share">
-          ⤴
+          <svg viewBox="0 0 24 24" className={styles.icon} fill="none" aria-hidden="true">
+            <path d="M8 12.5V16a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M12 14V5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M8.5 8.5L12 5l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
         <button className={`${styles.floatBtn} ${styles.rightBtn}`} aria-label="alert">
-          🔔
+          <svg viewBox="0 0 24 24" className={styles.icon} fill="none" aria-hidden="true">
+            <path d="M12 4a4 4 0 0 0-4 4v2.4c0 .8-.3 1.6-.8 2.2L6 14h12l-1.2-1.4c-.5-.6-.8-1.4-.8-2.2V8a4 4 0 0 0-4-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M10.2 17a2 2 0 0 0 3.6 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
         </button>
 
         <div className={styles.heroSplit}>
