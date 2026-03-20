@@ -94,6 +94,57 @@
   background: #fff;
   border-radius: 8px;
   padding: 6px 10px;
+  cursor: pointer;
+}
+
+.editor {
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.editor h3 {
+  margin: 0;
+}
+
+.editor label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.editor input {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.editorActions {
+  display: flex;
+  gap: 8px;
+}
+
+.saveButton {
+  border: 0;
+  background: #4f46e5;
+  color: #fff;
+  border-radius: 10px;
+  padding: 9px 13px;
+  font-weight: 700;
+}
+
+.cancelButton {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 10px;
+  padding: 9px 13px;
 }
 
 @media (max-width: 900px) {
