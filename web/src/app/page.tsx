@@ -1,4 +1,3 @@
-import Link from "next/link";
 import styles from "./page.module.css";
 
 type Product = {
@@ -47,9 +46,7 @@ export default function LinkPage() {
           매일 써보고 진짜 좋았던 것만 모아둔 링크야. 광고만 많은 목록 말고,
           바로 도움 되는 제품만 빠르게 확인해.
         </p>
-        <Link href="/admin" className={styles.secondaryButton}>
-          관리자 페이지 이동
-        </Link>
+
       </section>
 
       <section className={styles.grid}>
