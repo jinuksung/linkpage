@@ -1,0 +1,103 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  background: #f7f8fa;
+  color: #111827;
+}
+
+.sidebar {
+  border-right: 1px solid #e5e7eb;
+  background: #fff;
+  padding: 24px 16px;
+}
+
+.sidebar h1 {
+  font-size: 18px;
+  margin: 0 0 20px;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar a {
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.sidebar .active {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.content {
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.header h2 {
+  margin: 0;
+}
+
+.header p {
+  margin: 6px 0 0;
+  color: #6b7280;
+}
+
+.addButton {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  color: #fff;
+  background: #4f46e5;
+}
+
+.tableWrap {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.tableWrap table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableWrap th,
+.tableWrap td {
+  text-align: left;
+  padding: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.tableWrap th {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.tableWrap td button {
+  margin-right: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+}
