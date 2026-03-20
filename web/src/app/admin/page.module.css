@@ -81,6 +81,7 @@
   text-align: left;
   padding: 14px;
   border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
 }
 
 .tableWrap th {
@@ -97,29 +98,46 @@
   cursor: pointer;
 }
 
-.editor {
-  margin-top: 16px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 16px;
+.urlCell {
+  max-width: 220px;
+  word-break: break-all;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.editRow td {
+  background: #fafaff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.editorInline {
   display: grid;
   gap: 12px;
-  max-width: 560px;
 }
 
-.editor h3 {
+.editorInline h3 {
   margin: 0;
+  font-size: 15px;
 }
 
-.editor label {
+.editorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.editorGrid label {
   display: grid;
   gap: 6px;
   font-size: 14px;
   color: #374151;
 }
 
-.editor input {
+.linkField {
+  grid-column: 1 / -1;
+}
+
+.editorGrid input {
   border: 1px solid #d1d5db;
   border-radius: 10px;
   padding: 10px 12px;
@@ -149,6 +167,10 @@
 
 @media (max-width: 900px) {
   .page {
+    grid-template-columns: 1fr;
+  }
+
+  .editorGrid {
     grid-template-columns: 1fr;
   }
 }
