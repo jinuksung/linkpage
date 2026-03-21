@@ -538,11 +538,45 @@ export default function AdminPage() {
       </div>
 
       <div className={styles.mobileOnly}>
-        <nav className={styles.mobileTabs}>
-          <button className={mobileTab === "blocks" ? styles.activeTab : ""} onClick={() => setMobileTab("blocks")}>블록</button>
-          <button className={mobileTab === "preview" ? styles.activeTab : ""} onClick={() => setMobileTab("preview")}>미리보기</button>
-        </nav>
-        {mobileTab === "blocks" ? panelBlockList : panelPreview}
+        <header className={styles.mobileHeader}>
+          <div className={styles.mobileBrand}>littly</div>
+          <div className={styles.mobileAvatar}>🐹</div>
+        </header>
+
+        <div className={styles.mobileUrlBar}>
+          <a href="#">litt.ly/hot_deals</a>
+          <button>설정</button>
+        </div>
+
+        <div className={styles.mobileBlockList}>
+          {blocks.map((b) => (
+            <article key={b.id} className={styles.mobileBlockCard}>
+              <button
+                className={styles.mobileBlockHead}
+                onClick={() => {
+                  setSelectedId(b.id);
+                  if (b.type === "single") setExpandedSingleId((prev) => (prev === b.id ? null : b.id));
+                }}
+              >
+                <span className={styles.mobileDrag}>⋮⋮</span>
+                <strong>{b.type === "profile" ? "프로필" : b.type === "single" ? "단일 링크" : "그룹 링크"}</strong>
+                <em>{b.title}</em>
+                <span>⌄</span>
+              </button>
+
+              {b.type === "single" && expandedSingleId === b.id ? (
+                <div className={styles.mobileInlineForm}>{renderSingleForm(b)}</div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+
+        <div className={styles.mobileBottomActions}>
+          <button className={styles.previewFab} onClick={() => setMobileTab("preview")}>👁 미리보기</button>
+          <button className={styles.addFab} onClick={() => addBlock("single")}>＋ 블록 추가</button>
+        </div>
+
+        {mobileTab === "preview" ? <div className={styles.mobilePreviewWrap}>{panelPreview}</div> : null}
       </div>
 
       <footer className={styles.footerBar}>
