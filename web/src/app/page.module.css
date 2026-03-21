@@ -106,18 +106,6 @@
   border: 1px solid #eceff3;
 }
 
-.editBtn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 3;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: #fff;
-  padding: 4px 8px;
-  font-size: 12px;
-  text-decoration: none;
-}
 
 .thumb {
   width: 78px;
@@ -164,7 +152,6 @@
 .coverLink {
   position: absolute;
   inset: 0;
-  z-index: 2;
 }
 
 .srOnly {

@@ -69,9 +69,6 @@ export default function LinkPage() {
       <section className={styles.listWrap}>
         {products.map((product) => (
           <article key={product.id} className={styles.productCard}>
-            <a className={styles.editBtn} href={`/admin?block=${product.id}`}>
-              편집
-            </a>
             <img className={styles.thumb} src={product.imageUrl} alt={product.title} />
             <div className={styles.productBody}>
               {product.subtitle ? <div className={styles.chips}>{product.subtitle}</div> : null}
