@@ -523,16 +523,6 @@ export default function AdminPage() {
               </section>
             ) : b.type === "single" ? (
               <article key={b.id} className={styles.previewCard}>
-                <button
-                  className={styles.previewEditBtn}
-                  onClick={() => {
-                    setSelectedId(b.id);
-                    setExpandedBlockId(b.id);
-                    setMobilePreviewOpen(false);
-                  }}
-                >
-                  편집
-                </button>
                 <img src={b.thumbnailUrl} alt={b.title} />
                 <div>
                   {b.badge ? <em>{b.badge}</em> : null}
