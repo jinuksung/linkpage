@@ -539,8 +539,7 @@ export default function AdminPage() {
 
       <div className={styles.mobileOnly}>
         <header className={styles.mobileHeader}>
-          <div className={styles.mobileBrand}>littly</div>
-          <div className={styles.mobileAvatar}>🐹</div>
+          <div className={styles.mobileBrand}>링크페이지 편집</div>
         </header>
 
         <div className={styles.mobileUrlBar}>
@@ -561,7 +560,7 @@ export default function AdminPage() {
                 <span className={styles.mobileDrag}>⋮⋮</span>
                 <strong>{b.type === "profile" ? "프로필" : b.type === "single" ? "단일 링크" : "그룹 링크"}</strong>
                 <em>{b.title}</em>
-                <span>⌄</span>
+                <span className={styles.mobileChevron}>{expandedSingleId === b.id ? "⌃" : "⌄"}</span>
               </button>
 
               {b.type === "single" && expandedSingleId === b.id ? (
