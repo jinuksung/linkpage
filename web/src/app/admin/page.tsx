@@ -131,7 +131,7 @@ export default function AdminPage() {
   const [selectedId, setSelectedId] = useState(initialBlocks[0].id);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [viewport, setViewport] = useState("390px");
-  const [mobileTab, setMobileTab] = useState<"blocks" | "edit" | "preview">("blocks");
+  const [mobileTab, setMobileTab] = useState<"blocks" | "preview">("blocks");
   const [expandedSingleId, setExpandedSingleId] = useState<string | null>(null);
 
   const selected = blocks.find((b) => b.id === selectedId) ?? blocks[0];
@@ -540,10 +540,9 @@ export default function AdminPage() {
       <div className={styles.mobileOnly}>
         <nav className={styles.mobileTabs}>
           <button className={mobileTab === "blocks" ? styles.activeTab : ""} onClick={() => setMobileTab("blocks")}>블록</button>
-          <button className={mobileTab === "edit" ? styles.activeTab : ""} onClick={() => setMobileTab("edit")}>편집</button>
           <button className={mobileTab === "preview" ? styles.activeTab : ""} onClick={() => setMobileTab("preview")}>미리보기</button>
         </nav>
-        {mobileTab === "blocks" ? panelBlockList : mobileTab === "edit" ? panelEditor : panelPreview}
+        {mobileTab === "blocks" ? panelBlockList : panelPreview}
       </div>
 
       <footer className={styles.footerBar}>
