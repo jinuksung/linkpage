@@ -619,6 +619,38 @@ export default function AdminPage() {
                 </svg>
               </button>
 
+              <div className={styles.mobileCardActions}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const idx = blocks.findIndex((x) => x.id === b.id);
+                    if (idx > 0) reorderBlocks(b.id, blocks[idx - 1].id);
+                  }}
+                >
+                  위로
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const idx = blocks.findIndex((x) => x.id === b.id);
+                    if (idx >= 0 && idx < blocks.length - 1) reorderBlocks(b.id, blocks[idx + 1].id);
+                  }}
+                >
+                  아래로
+                </button>
+                {b.type !== "profile" ? (
+                  <button
+                    className={styles.dangerBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      remove(b.id);
+                    }}
+                  >
+                    삭제
+                  </button>
+                ) : null}
+              </div>
+
               {expandedBlockId === b.id ? (
                 <div className={styles.mobileInlineForm}>
                   {b.type === "single" ? renderSingleForm(b) : b.type === "profile" ? (

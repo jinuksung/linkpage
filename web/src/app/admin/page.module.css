@@ -398,6 +398,25 @@
   transform: rotate(180deg);
 }
 
+.mobileCardActions {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+
+.mobileCardActions button {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.dangerBtn {
+  border-color: #fecaca !important;
+  color: #b91c1c;
+}
+
 .mobileInlineForm {
   border-top: 1px solid #f1f5f9;
   padding: 10px;
