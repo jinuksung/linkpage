@@ -133,6 +133,7 @@ export default function AdminPage() {
   const [viewport, setViewport] = useState("390px");
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
+  const [dragBlockId, setDragBlockId] = useState<string | null>(null);
 
   const selected = blocks.find((b) => b.id === selectedId) ?? blocks[0];
 
@@ -186,17 +187,6 @@ export default function AdminPage() {
     setSelectedId(block.id);
   };
 
-  const move = (id: string, dir: -1 | 1) => {
-    withDirty((prev) => {
-      const idx = prev.findIndex((b) => b.id === id);
-      const next = idx + dir;
-      if (idx < 0 || next < 0 || next >= prev.length) return prev;
-      const copied = [...prev];
-      [copied[idx], copied[next]] = [copied[next], copied[idx]];
-      return copied;
-    });
-  };
-
   const duplicate = (id: string) => {
     withDirty((prev) => {
       const idx = prev.findIndex((b) => b.id === id);
@@ -205,6 +195,19 @@ export default function AdminPage() {
       const clone: Block = { ...original, id: nextId(original.type === "single" ? "b_single" : original.type === "group" ? "b_group" : "b_profile") } as Block;
       const copied = [...prev];
       copied.splice(idx + 1, 0, clone);
+      return copied;
+    });
+  };
+
+  const reorderBlocks = (fromId: string, toId: string) => {
+    if (!fromId || !toId || fromId === toId) return;
+    withDirty((prev) => {
+      const from = prev.findIndex((b) => b.id === fromId);
+      const to = prev.findIndex((b) => b.id === toId);
+      if (from < 0 || to < 0) return prev;
+      const copied = [...prev];
+      const [picked] = copied.splice(from, 1);
+      copied.splice(to, 0, picked);
       return copied;
     });
   };
@@ -391,10 +394,22 @@ export default function AdminPage() {
       </div>
 
       <ul className={styles.blockList}>
-        {blocks.map((b, idx) => {
+        {blocks.map((b) => {
           const error = blockError(b);
           return (
-            <li key={b.id} className={`${styles.blockItem} ${selectedId === b.id ? styles.active : ""}`} onClick={() => setSelectedId(b.id)}>
+            <li
+              key={b.id}
+              className={`${styles.blockItem} ${selectedId === b.id ? styles.active : ""}`}
+              onClick={() => setSelectedId(b.id)}
+              draggable
+              onDragStart={() => setDragBlockId(b.id)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                if (dragBlockId) reorderBlocks(dragBlockId, b.id);
+                setDragBlockId(null);
+              }}
+              onDragEnd={() => setDragBlockId(null)}
+            >
               <div className={styles.blockMain}>
                 <span>☰ {b.type === "profile" ? "프로필" : b.type === "single" ? "단일링크" : "그룹링크"}</span>
                 <button
@@ -430,10 +445,10 @@ export default function AdminPage() {
                     선택
                   </button>
                 )}
-                <button onClick={(e) => { e.stopPropagation(); move(b.id, -1); }} disabled={idx === 0}>↑</button>
-                <button onClick={(e) => { e.stopPropagation(); move(b.id, 1); }} disabled={idx === blocks.length - 1}>↓</button>
                 <button onClick={(e) => { e.stopPropagation(); duplicate(b.id); }}>복제</button>
-                <button onClick={(e) => { e.stopPropagation(); remove(b.id); }}>삭제</button>
+                {b.type !== "profile" ? (
+                  <button onClick={(e) => { e.stopPropagation(); remove(b.id); }}>삭제</button>
+                ) : null}
               </div>
               {expandedBlockId === b.id ? (
                 <div className={styles.inlineEditor} onClick={(e) => e.stopPropagation()}>
@@ -555,7 +570,6 @@ export default function AdminPage() {
           <span className={`${styles.stateBadge} ${styles[saveState]}`}>{statusText}</span>
         </div>
         <div className={styles.topActions}>
-          <button className={styles.secondaryBtn}>미리보기</button>
           <button className={styles.secondaryBtn} onClick={save}>저장</button>
           <button className={styles.primaryBtn}>발행</button>
         </div>
@@ -574,7 +588,18 @@ export default function AdminPage() {
 
         <div className={styles.mobileBlockList}>
           {blocks.map((b) => (
-            <article key={b.id} className={styles.mobileBlockCard}>
+            <article
+              key={b.id}
+              className={styles.mobileBlockCard}
+              draggable
+              onDragStart={() => setDragBlockId(b.id)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                if (dragBlockId) reorderBlocks(dragBlockId, b.id);
+                setDragBlockId(null);
+              }}
+              onDragEnd={() => setDragBlockId(null)}
+            >
               <button
                 className={styles.mobileBlockHead}
                 onClick={() => {
