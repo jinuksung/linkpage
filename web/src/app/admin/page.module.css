@@ -156,6 +156,12 @@
   flex-wrap: wrap;
 }
 
+.inlineEditor {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #d1d5db;
+}
+
 .formGrid {
   display: grid;
   gap: 10px;

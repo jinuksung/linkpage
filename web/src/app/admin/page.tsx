@@ -132,6 +132,7 @@ export default function AdminPage() {
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [viewport, setViewport] = useState("390px");
   const [mobileTab, setMobileTab] = useState<"blocks" | "edit" | "preview">("blocks");
+  const [expandedSingleId, setExpandedSingleId] = useState<string | null>(null);
 
   const selected = blocks.find((b) => b.id === selectedId) ?? blocks[0];
 
@@ -210,6 +211,7 @@ export default function AdminPage() {
 
   const remove = (id: string) => {
     withDirty((prev) => prev.filter((b) => b.id !== id));
+    if (expandedSingleId === id) setExpandedSingleId(null);
     if (selectedId === id) {
       const remain = blocks.filter((b) => b.id !== id);
       if (remain[0]) setSelectedId(remain[0].id);
@@ -238,6 +240,51 @@ export default function AdminPage() {
 
   const visibleBlocks = useMemo(() => blocks.filter((b) => b.visible), [blocks]);
 
+  const renderSingleForm = (block: SingleLinkBlock) => (
+    <div className={styles.formGrid}>
+      <label>
+        제목
+        <input value={block.title} onChange={(e) => updateBlock(block.id, { title: e.target.value })} />
+      </label>
+      <label>
+        URL
+        <input value={block.url} onChange={(e) => updateBlock(block.id, { url: e.target.value })} />
+      </label>
+      <label>
+        썸네일 URL
+        <input value={block.thumbnailUrl} onChange={(e) => updateBlock(block.id, { thumbnailUrl: e.target.value })} />
+      </label>
+      <label>
+        배지
+        <input value={block.badge ?? ""} onChange={(e) => updateBlock(block.id, { badge: e.target.value })} />
+      </label>
+      <label>
+        서브텍스트
+        <input value={block.subtext ?? ""} onChange={(e) => updateBlock(block.id, { subtext: e.target.value })} />
+      </label>
+      <label>
+        가격
+        <input value={block.price ?? ""} onChange={(e) => updateBlock(block.id, { price: e.target.value })} />
+      </label>
+      <label>
+        할인
+        <input value={block.discount ?? ""} onChange={(e) => updateBlock(block.id, { discount: e.target.value })} />
+      </label>
+      <label>
+        버튼 문구
+        <input value={block.buttonText} onChange={(e) => updateBlock(block.id, { buttonText: e.target.value })} />
+      </label>
+      <label>
+        카드 크기
+        <select value={block.size} onChange={(e) => updateBlock(block.id, { size: e.target.value as SingleLinkBlock["size"] })}>
+          <option value="small">small</option>
+          <option value="medium">medium</option>
+          <option value="large">large</option>
+        </select>
+      </label>
+    </div>
+  );
+
   const renderEditor = () => {
     if (!selected) return null;
 
@@ -265,50 +312,7 @@ export default function AdminPage() {
     }
 
     if (selected.type === "single") {
-      return (
-        <div className={styles.formGrid}>
-          <label>
-            제목
-            <input value={selected.title} onChange={(e) => updateBlock(selected.id, { title: e.target.value })} />
-          </label>
-          <label>
-            URL
-            <input value={selected.url} onChange={(e) => updateBlock(selected.id, { url: e.target.value })} />
-          </label>
-          <label>
-            썸네일 URL
-            <input value={selected.thumbnailUrl} onChange={(e) => updateBlock(selected.id, { thumbnailUrl: e.target.value })} />
-          </label>
-          <label>
-            배지
-            <input value={selected.badge ?? ""} onChange={(e) => updateBlock(selected.id, { badge: e.target.value })} />
-          </label>
-          <label>
-            서브텍스트
-            <input value={selected.subtext ?? ""} onChange={(e) => updateBlock(selected.id, { subtext: e.target.value })} />
-          </label>
-          <label>
-            가격
-            <input value={selected.price ?? ""} onChange={(e) => updateBlock(selected.id, { price: e.target.value })} />
-          </label>
-          <label>
-            할인
-            <input value={selected.discount ?? ""} onChange={(e) => updateBlock(selected.id, { discount: e.target.value })} />
-          </label>
-          <label>
-            버튼 문구
-            <input value={selected.buttonText} onChange={(e) => updateBlock(selected.id, { buttonText: e.target.value })} />
-          </label>
-          <label>
-            카드 크기
-            <select value={selected.size} onChange={(e) => updateBlock(selected.id, { size: e.target.value as SingleLinkBlock["size"] })}>
-              <option value="small">small</option>
-              <option value="medium">medium</option>
-              <option value="large">large</option>
-            </select>
-          </label>
-        </div>
-      );
+      return renderSingleForm(selected);
     }
 
     return (
@@ -411,10 +415,10 @@ export default function AdminPage() {
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedId(b.id);
-                      setMobileTab("edit");
+                      setExpandedSingleId((prev) => (prev === b.id ? null : b.id));
                     }}
                   >
-                    카드 편집
+                    {expandedSingleId === b.id ? "접기" : "카드 편집"}
                   </button>
                 ) : (
                   <button
@@ -431,6 +435,11 @@ export default function AdminPage() {
                 <button onClick={(e) => { e.stopPropagation(); duplicate(b.id); }}>복제</button>
                 <button onClick={(e) => { e.stopPropagation(); remove(b.id); }}>삭제</button>
               </div>
+              {b.type === "single" && expandedSingleId === b.id ? (
+                <div className={styles.inlineEditor} onClick={(e) => e.stopPropagation()}>
+                  {renderSingleForm(b)}
+                </div>
+              ) : null}
             </li>
           );
         })}
@@ -473,7 +482,8 @@ export default function AdminPage() {
                   className={styles.previewEditBtn}
                   onClick={() => {
                     setSelectedId(b.id);
-                    setMobileTab("edit");
+                    setExpandedSingleId(b.id);
+                    setMobileTab("blocks");
                   }}
                 >
                   편집
