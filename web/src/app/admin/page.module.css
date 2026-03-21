@@ -228,8 +228,8 @@
   position: relative;
   background: var(--neutral-100);
   border: 1px solid var(--neutral-500);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: 14px;
+  padding: 9px;
 }
 
 .previewEditBtn {
@@ -264,37 +264,37 @@
 
 .previewCard {
   display: grid;
-  grid-template-columns: 70px 1fr;
-  gap: 8px;
+  grid-template-columns: 78px 1fr;
+  gap: 10px;
 }
 
 .previewCardSmall {
-  grid-template-columns: 56px 1fr;
+  grid-template-columns: 64px 1fr;
 }
 
 .previewCardMedium {
-  grid-template-columns: 70px 1fr;
+  grid-template-columns: 78px 1fr;
 }
 
 .previewCardLarge {
-  grid-template-columns: 92px 1fr;
+  grid-template-columns: 96px 1fr;
 }
 
 .previewCard img {
-  width: 70px;
-  height: 70px;
-  border-radius: 8px;
+  width: 78px;
+  height: 78px;
+  border-radius: 10px;
   object-fit: cover;
 }
 
 .previewCardSmall img {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
 }
 
 .previewCardLarge img {
-  width: 92px;
-  height: 92px;
+  width: 96px;
+  height: 96px;
 }
 
 .previewCard em {
@@ -309,6 +309,12 @@
   margin: 4px 0;
   color: var(--neutral-700);
   font-size: 12px;
+}
+
+.previewCard strong {
+  font-size: 16px;
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-subtitle);
 }
 
 .previewCard button {
