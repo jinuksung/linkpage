@@ -132,7 +132,7 @@ export default function AdminPage() {
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [viewport, setViewport] = useState("390px");
   const [mobileTab, setMobileTab] = useState<"blocks" | "preview">("blocks");
-  const [expandedSingleId, setExpandedSingleId] = useState<string | null>(null);
+  const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
 
   const selected = blocks.find((b) => b.id === selectedId) ?? blocks[0];
 
@@ -211,7 +211,7 @@ export default function AdminPage() {
 
   const remove = (id: string) => {
     withDirty((prev) => prev.filter((b) => b.id !== id));
-    if (expandedSingleId === id) setExpandedSingleId(null);
+    if (expandedBlockId === id) setExpandedBlockId(null);
     if (selectedId === id) {
       const remain = blocks.filter((b) => b.id !== id);
       if (remain[0]) setSelectedId(remain[0].id);
@@ -415,10 +415,10 @@ export default function AdminPage() {
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedId(b.id);
-                      setExpandedSingleId((prev) => (prev === b.id ? null : b.id));
+                      setExpandedBlockId((prev) => (prev === b.id ? null : b.id));
                     }}
                   >
-                    {expandedSingleId === b.id ? "접기" : "카드 편집"}
+                    {expandedBlockId === b.id ? "접기" : "카드 편집"}
                   </button>
                 ) : (
                   <button
@@ -435,9 +435,39 @@ export default function AdminPage() {
                 <button onClick={(e) => { e.stopPropagation(); duplicate(b.id); }}>복제</button>
                 <button onClick={(e) => { e.stopPropagation(); remove(b.id); }}>삭제</button>
               </div>
-              {b.type === "single" && expandedSingleId === b.id ? (
+              {expandedBlockId === b.id ? (
                 <div className={styles.inlineEditor} onClick={(e) => e.stopPropagation()}>
-                  {renderSingleForm(b)}
+                  {b.type === "single" ? renderSingleForm(b) : b.type === "profile" ? (
+                    <div className={styles.formGrid}>
+                      <label>
+                        프로필 이미지 URL
+                        <input value={b.imageUrl} onChange={(e) => updateBlock(b.id, { imageUrl: e.target.value })} />
+                      </label>
+                      <label>
+                        페이지 타이틀
+                        <input value={b.title} onChange={(e) => updateBlock(b.id, { title: e.target.value })} />
+                      </label>
+                      <label>
+                        소개 문구
+                        <textarea value={b.intro} onChange={(e) => updateBlock(b.id, { intro: e.target.value })} />
+                      </label>
+                      <label>
+                        공지 문구
+                        <textarea value={b.notice ?? ""} onChange={(e) => updateBlock(b.id, { notice: e.target.value })} />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className={styles.formGrid}>
+                      <label>
+                        그룹 제목
+                        <input value={b.title} onChange={(e) => updateBlock(b.id, { title: e.target.value })} />
+                      </label>
+                      <label>
+                        그룹 설명
+                        <input value={b.description ?? ""} onChange={(e) => updateBlock(b.id, { description: e.target.value })} />
+                      </label>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </li>
@@ -482,7 +512,7 @@ export default function AdminPage() {
                   className={styles.previewEditBtn}
                   onClick={() => {
                     setSelectedId(b.id);
-                    setExpandedSingleId(b.id);
+                    setExpandedBlockId(b.id);
                     setMobileTab("blocks");
                   }}
                 >
@@ -542,11 +572,6 @@ export default function AdminPage() {
           <div className={styles.mobileBrand}>링크페이지 편집</div>
         </header>
 
-        <div className={styles.mobileUrlBar}>
-          <a href="#">litt.ly/hot_deals</a>
-          <button>설정</button>
-        </div>
-
         <div className={styles.mobileBlockList}>
           {blocks.map((b) => (
             <article key={b.id} className={styles.mobileBlockCard}>
@@ -554,14 +579,14 @@ export default function AdminPage() {
                 className={styles.mobileBlockHead}
                 onClick={() => {
                   setSelectedId(b.id);
-                  if (b.type === "single") setExpandedSingleId((prev) => (prev === b.id ? null : b.id));
+                  setExpandedBlockId((prev) => (prev === b.id ? null : b.id));
                 }}
               >
                 <span className={styles.mobileDrag}>⋮⋮</span>
                 <strong>{b.type === "profile" ? "프로필" : b.type === "single" ? "단일 링크" : "그룹 링크"}</strong>
                 <em>{b.title}</em>
                 <svg
-                  className={`${styles.mobileChevron} ${expandedSingleId === b.id ? styles.mobileChevronExpanded : ""}`}
+                  className={`${styles.mobileChevron} ${expandedBlockId === b.id ? styles.mobileChevronExpanded : ""}`}
                   viewBox="0 0 24 24"
                   aria-hidden="true"
                 >
@@ -569,8 +594,36 @@ export default function AdminPage() {
                 </svg>
               </button>
 
-              {b.type === "single" && expandedSingleId === b.id ? (
-                <div className={styles.mobileInlineForm}>{renderSingleForm(b)}</div>
+              {expandedBlockId === b.id ? (
+                <div className={styles.mobileInlineForm}>
+                  {b.type === "single" ? renderSingleForm(b) : b.type === "profile" ? (
+                    <div className={styles.formGrid}>
+                      <label>
+                        프로필 이미지 URL
+                        <input value={b.imageUrl} onChange={(e) => updateBlock(b.id, { imageUrl: e.target.value })} />
+                      </label>
+                      <label>
+                        페이지 타이틀
+                        <input value={b.title} onChange={(e) => updateBlock(b.id, { title: e.target.value })} />
+                      </label>
+                      <label>
+                        소개 문구
+                        <textarea value={b.intro} onChange={(e) => updateBlock(b.id, { intro: e.target.value })} />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className={styles.formGrid}>
+                      <label>
+                        그룹 제목
+                        <input value={b.title} onChange={(e) => updateBlock(b.id, { title: e.target.value })} />
+                      </label>
+                      <label>
+                        그룹 설명
+                        <input value={b.description ?? ""} onChange={(e) => updateBlock(b.id, { description: e.target.value })} />
+                      </label>
+                    </div>
+                  )}
+                </div>
               ) : null}
             </article>
           ))}
