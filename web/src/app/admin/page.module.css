@@ -400,14 +400,14 @@
 }
 
 .mobileChevron {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  font-size: 24px !important;
-  line-height: 1 !important;
+  width: 24px;
+  height: 24px;
   color: #64748b;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   transform: rotate(0deg);
   transition: transform 0.15s ease;
 }

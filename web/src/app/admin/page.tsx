@@ -560,11 +560,13 @@ export default function AdminPage() {
                 <span className={styles.mobileDrag}>⋮⋮</span>
                 <strong>{b.type === "profile" ? "프로필" : b.type === "single" ? "단일 링크" : "그룹 링크"}</strong>
                 <em>{b.title}</em>
-                <span
-                  className={`material-symbols-rounded ${styles.mobileChevron} ${expandedSingleId === b.id ? styles.mobileChevronExpanded : ""}`}
+                <svg
+                  className={`${styles.mobileChevron} ${expandedSingleId === b.id ? styles.mobileChevronExpanded : ""}`}
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
                 >
-                  expand_more
-                </span>
+                  <path d="M7 10l5 5 5-5" />
+                </svg>
               </button>
 
               {b.type === "single" && expandedSingleId === b.id ? (
