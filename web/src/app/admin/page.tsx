@@ -131,7 +131,7 @@ export default function AdminPage() {
   const [selectedId, setSelectedId] = useState(initialBlocks[0].id);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [viewport, setViewport] = useState("390px");
-  const [mobileTab, setMobileTab] = useState<"blocks" | "preview">("blocks");
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
 
   const selected = blocks.find((b) => b.id === selectedId) ?? blocks[0];
@@ -513,7 +513,7 @@ export default function AdminPage() {
                   onClick={() => {
                     setSelectedId(b.id);
                     setExpandedBlockId(b.id);
-                    setMobileTab("blocks");
+                    setMobilePreviewOpen(false);
                   }}
                 >
                   편집
@@ -630,11 +630,17 @@ export default function AdminPage() {
         </div>
 
         <div className={styles.mobileBottomActions}>
-          <button className={styles.previewFab} onClick={() => setMobileTab("preview")}>👁 미리보기</button>
+          <button className={styles.previewFab} onClick={() => setMobilePreviewOpen((v) => !v)}>
+            {mobilePreviewOpen ? "✕ 미리보기 닫기" : "👁 미리보기"}
+          </button>
           <button className={styles.addFab} onClick={() => addBlock("single")}>＋ 블록 추가</button>
         </div>
 
-        {mobileTab === "preview" ? <div className={styles.mobilePreviewWrap}>{panelPreview}</div> : null}
+        {mobilePreviewOpen ? (
+          <div className={styles.mobilePreviewOverlay}>
+            <div className={styles.mobilePreviewWrap}>{panelPreview}</div>
+          </div>
+        ) : null}
       </div>
 
       <footer className={styles.footerBar}>
