@@ -1,35 +1,10 @@
 import styles from "./page.module.css";
-
-type Product = {
-  id: string;
-  title: string;
-  subtitle?: string;
-  imageUrl: string;
-  badge?: string;
-  price?: string;
-  discount?: string;
-  href: string;
-};
-
-const products: Product[] = [
-  {
-    id: "p1",
-    title: "출근길 든든템! 믹서형 텀블러",
-    subtitle: "든든템 · 믹서",
-    imageUrl: "https://picsum.photos/seed/tumbler/240/240",
-    href: "https://example.com/product-1",
-  },
-  {
-    id: "p2",
-    title: "화장실 청소 꿀템! 벽 부착 센서형 휴지통",
-    imageUrl: "https://picsum.photos/seed/bin/240/240",
-    discount: "42%",
-    price: "26,400원",
-    href: "https://example.com/product-2",
-  },
-];
+import { initialBlocks } from "../lib/page-data";
 
 export default function LinkPage() {
+  const profile = initialBlocks.find((b): b is Extract<(typeof initialBlocks)[number], { type: "profile" }> => b.type === "profile" && b.visible);
+  const singles = initialBlocks.filter((b): b is Extract<(typeof initialBlocks)[number], { type: "single" }> => b.type === "single" && b.visible);
+
   return (
     <main className={styles.page}>
       <section className={styles.heroWrap}>
@@ -40,34 +15,25 @@ export default function LinkPage() {
             <path d="M20 14V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18V6C4 4.9 4.9 4 6 4H10" />
           </svg>
         </button>
-        <button className={`${styles.floatBtn} ${styles.rightBtn} ${styles.hidden}`} aria-label="alert" hidden>
-          <svg className={styles.icon} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M15 18H9" />
-            <path d="M18 10C18 6.7 15.3 4 12 4C8.7 4 6 6.7 6 10V13L4.5 16H19.5L18 13V10Z" />
-          </svg>
-        </button>
 
         <div className={styles.heroSingle}>
-          <img src="/images/profile-main.jpg" alt="프로필 이미지" />
+          <img src={profile?.imageUrl ?? "/images/profile-main.jpg"} alt="프로필 이미지" />
         </div>
 
         <div className={styles.profileSection}>
-          <h1>핫비버와 핫도리의 핫딜 모음집</h1>
-          <p>
-            본 페이지는 쿠팡 파트너스 활동의 일환으로
-            <br />
-            수수료를 제공받아요!
-          </p>
+          <h1>{profile?.title ?? "핫비버와 핫도리의 핫딜 모음집"}</h1>
+          {profile?.intro ? <p>{profile.intro}</p> : null}
+          {profile?.notice ? <small>{profile.notice}</small> : null}
         </div>
       </section>
 
       <section className={styles.listWrap}>
-        {products.map((product) => (
+        {singles.map((product) => (
           <article key={product.id} className={styles.productCard}>
-            <img className={styles.thumb} src={product.imageUrl} alt={product.title} />
+            <img className={styles.thumb} src={product.thumbnailUrl} alt={product.title} />
             <div className={styles.productBody}>
-              {product.subtitle ? <div className={styles.chips}>{product.subtitle}</div> : null}
               <h2>{product.title}</h2>
+              {product.subtext ? <p className={styles.subtext}>{product.subtext}</p> : null}
               {product.discount || product.price ? (
                 <div className={styles.priceRow}>
                   {product.discount ? <span className={styles.discount}>{product.discount}</span> : null}
@@ -75,7 +41,7 @@ export default function LinkPage() {
                 </div>
               ) : null}
             </div>
-            <a href={product.href} target="_blank" rel="noopener noreferrer" className={styles.coverLink}>
+            <a href={product.url} target="_blank" rel="noopener noreferrer" className={styles.coverLink}>
               <span className={styles.srOnly}>상품 이동</span>
             </a>
           </article>

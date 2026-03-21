@@ -69,15 +69,22 @@
 .profileSection h1 {
   font-size: 22px;
   margin: 0 0 8px;
-  letter-spacing: -0.3px;
-  line-height: 1.32;
+  letter-spacing: var(--ls-heading);
+  line-height: var(--lh-heading);
 }
 
 .profileSection p {
   margin: 0;
-  color: #30363d;
-  line-height: 1.48;
-  font-size: 13px;
+  color: var(--neutral-900);
+  line-height: var(--lh-body);
+  font-size: var(--fs-14);
+}
+
+.profileSection small {
+  display: block;
+  margin-top: 6px;
+  color: var(--neutral-700);
+  font-size: var(--fs-12);
 }
 
 .listWrap {
@@ -110,17 +117,15 @@
 .productBody h2 {
   margin: 6px 0 0;
   font-size: 16px;
-  line-height: 1.32;
-  letter-spacing: -0.18px;
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-subtitle);
 }
 
-.chips {
-  display: inline-block;
-  font-size: 12px;
-  background: #f1f3f5;
-  color: #495057;
-  border-radius: 7px;
-  padding: 2px 7px;
+.subtext {
+  margin: 4px 0 0;
+  color: var(--neutral-700);
+  font-size: var(--fs-12);
+  line-height: var(--lh-body);
 }
 
 .priceRow {
