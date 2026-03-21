@@ -493,13 +493,14 @@
 }
 
 .mobilePreviewWrap .previewShell {
-  width: min(390px, 82vw) !important;
+  width: min(340px, 82vw) !important;
+  aspect-ratio: 390 / 844;
 }
 
 .mobilePreviewWrap .previewInner {
-  max-height: 66vh;
+  max-height: none;
+  height: 100%;
 }
-
 @media (min-width: 1101px) {
   .desktopGrid {
     display: grid;
