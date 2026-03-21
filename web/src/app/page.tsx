@@ -34,14 +34,17 @@ export default function LinkPage() {
     <main className={styles.page}>
       <section className={styles.heroWrap}>
         <button className={`${styles.floatBtn} ${styles.leftBtn}`} aria-label="share">
-          <span className={`material-symbols-rounded ${styles.icon}`} aria-hidden="true">
-            ios_share
-          </span>
+          <svg className={styles.icon} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M14 4H20V10" />
+            <path d="M20 4L11 13" />
+            <path d="M20 14V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18V6C4 4.9 4.9 4 6 4H10" />
+          </svg>
         </button>
-        <button className={`${styles.floatBtn} ${styles.rightBtn}`} aria-label="alert">
-          <span className={`material-symbols-rounded ${styles.icon}`} aria-hidden="true">
-            notifications
-          </span>
+        <button className={`${styles.floatBtn} ${styles.rightBtn} ${styles.hidden}`} aria-label="alert" hidden>
+          <svg className={styles.icon} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 18H9" />
+            <path d="M18 10C18 6.7 15.3 4 12 4C8.7 4 6 6.7 6 10V13L4.5 16H19.5L18 13V10Z" />
+          </svg>
         </button>
 
         <div className={styles.heroSplit}>
@@ -66,6 +69,9 @@ export default function LinkPage() {
       <section className={styles.listWrap}>
         {products.map((product) => (
           <article key={product.id} className={styles.productCard}>
+            <a className={styles.editBtn} href={`/admin?block=${product.id}`}>
+              편집
+            </a>
             <img className={styles.thumb} src={product.imageUrl} alt={product.title} />
             <div className={styles.productBody}>
               {product.subtitle ? <div className={styles.chips}>{product.subtitle}</div> : null}
