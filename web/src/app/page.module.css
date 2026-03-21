@@ -12,20 +12,13 @@
   background: var(--neutral-200);
 }
 
-.heroSplit {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  height: 210px;
-}
-
-.heroHalfLeft,
-.heroHalfRight {
+.heroSingle {
+  height: 240px;
   overflow: hidden;
-  background: #d8c1a5;
+  background: var(--neutral-300);
 }
 
-.heroHalfLeft img,
-.heroHalfRight img {
+.heroSingle img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -171,8 +164,8 @@
     max-width: 500px;
   }
 
-  .heroSplit {
-    height: 260px;
+  .heroSingle {
+    height: 300px;
   }
 
   .profileSection h1 {

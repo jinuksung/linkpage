@@ -47,13 +47,8 @@ export default function LinkPage() {
           </svg>
         </button>
 
-        <div className={styles.heroSplit}>
-          <div className={styles.heroHalfLeft}>
-            <img src="https://picsum.photos/seed/hamster/380/380" alt="캐릭터 1" />
-          </div>
-          <div className={styles.heroHalfRight}>
-            <img src="https://picsum.photos/seed/otter/380/380" alt="캐릭터 2" />
-          </div>
+        <div className={styles.heroSingle}>
+          <img src="/images/profile-main.jpg" alt="프로필 이미지" />
         </div>
 
         <div className={styles.profileSection}>

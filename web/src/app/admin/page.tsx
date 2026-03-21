@@ -56,7 +56,7 @@ const initialBlocks: Block[] = [
     title: "핫비버와 핫도리의 핫딜 모음집",
     intro: "오늘의 추천 상품만 빠르게 모아둔 링크페이지",
     notice: "쿠팡 파트너스 활동의 일환으로 수수료를 제공받습니다.",
-    imageUrl: "https://picsum.photos/seed/profile/480/260",
+    imageUrl: "/images/profile-main.jpg",
   },
   {
     id: "b_single_1",
@@ -156,7 +156,7 @@ export default function AdminPage() {
             title: "새 프로필",
             intro: "소개 문구",
             notice: "",
-            imageUrl: "https://picsum.photos/seed/new-profile/480/260",
+            imageUrl: "/images/profile-main.jpg",
           }
         : type === "single"
           ? {
