@@ -629,15 +629,16 @@ export default function AdminPage() {
           ))}
         </div>
 
-        <div className={styles.mobileBottomActions}>
+        <div className={`${styles.mobileBottomActions} ${mobilePreviewOpen ? styles.hiddenOnPreview : ""}`}>
           <button className={styles.previewFab} onClick={() => setMobilePreviewOpen((v) => !v)}>
-            {mobilePreviewOpen ? "✕ 미리보기 닫기" : "👁 미리보기"}
+            👁 미리보기
           </button>
           <button className={styles.addFab} onClick={() => addBlock("single")}>＋ 블록 추가</button>
         </div>
 
         {mobilePreviewOpen ? (
           <div className={styles.mobilePreviewOverlay}>
+            <button className={styles.previewCloseFab} onClick={() => setMobilePreviewOpen(false)}>✕ 미리보기 닫기</button>
             <div className={styles.mobilePreviewWrap}>{panelPreview}</div>
           </div>
         ) : null}
