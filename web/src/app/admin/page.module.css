@@ -383,6 +383,10 @@
   text-align: left;
 }
 
+.mobileBlockHead > * {
+  align-self: center;
+}
+
 .mobileBlockHead em {
   font-style: normal;
   color: #6b7280;
@@ -396,14 +400,15 @@
 }
 
 .mobileChevron {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  font-size: 20px;
+  width: 28px;
+  height: 28px;
+  font-size: 24px;
   line-height: 1;
   color: #64748b;
+  transform: translateY(-1px);
 }
 
 .mobileInlineForm {
