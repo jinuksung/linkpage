@@ -1,177 +1,519 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import styles from "./page.module.css";
 
-type Product = {
-  id: number;
-  name: string;
-  buttonText: string;
-  linkUrl: string;
-  order: number;
+type SaveState = "saved" | "dirty" | "saving" | "error";
+
+type ProfileBlock = {
+  id: string;
+  type: "profile";
+  visible: boolean;
+  title: string;
+  intro: string;
+  notice?: string;
+  imageUrl: string;
 };
 
-const initialProducts: Product[] = [
+type LinkItem = {
+  id: string;
+  title: string;
+  url: string;
+};
+
+type SingleLinkBlock = {
+  id: string;
+  type: "single";
+  visible: boolean;
+  title: string;
+  url: string;
+  thumbnailUrl: string;
+  badge?: string;
+  subtext?: string;
+  price?: string;
+  discount?: string;
+  buttonText: string;
+  size: "small" | "medium" | "large";
+};
+
+type GroupLinkBlock = {
+  id: string;
+  type: "group";
+  visible: boolean;
+  title: string;
+  description?: string;
+  expandedByDefault: boolean;
+  links: LinkItem[];
+};
+
+type Block = ProfileBlock | SingleLinkBlock | GroupLinkBlock;
+
+const initialBlocks: Block[] = [
   {
-    id: 1,
-    name: "데일리 이너케어 유산균",
-    buttonText: "자세히 보기",
-    linkUrl: "https://example.com/product-1",
-    order: 1,
+    id: "b_profile",
+    type: "profile",
+    visible: true,
+    title: "핫비버와 핫도리의 핫딜 모음집",
+    intro: "오늘의 추천 상품만 빠르게 모아둔 링크페이지",
+    notice: "쿠팡 파트너스 활동의 일환으로 수수료를 제공받습니다.",
+    imageUrl: "https://picsum.photos/seed/profile/480/260",
   },
   {
-    id: 2,
-    name: "피부 탄력 콜라겐 스틱",
-    buttonText: "구매하러 가기",
-    linkUrl: "https://example.com/product-2",
-    order: 2,
+    id: "b_single_1",
+    type: "single",
+    visible: true,
+    title: "출근길 든든템! 믹서형 텀블러",
+    url: "https://example.com/product-1",
+    thumbnailUrl: "https://picsum.photos/seed/tumbler/240/240",
+    badge: "든든템",
+    subtext: "아침 스무디 30초 완성",
+    price: "29,900원",
+    discount: "18%",
+    buttonText: "보러가기",
+    size: "medium",
   },
   {
-    id: 3,
-    name: "모닝 루틴 비타민 패키지",
-    buttonText: "할인 링크 열기",
-    linkUrl: "https://example.com/product-3",
-    order: 3,
+    id: "b_single_2",
+    type: "single",
+    visible: true,
+    title: "벽 부착 센서형 휴지통",
+    url: "https://example.com/product-2",
+    thumbnailUrl: "https://picsum.photos/seed/bin/240/240",
+    badge: "청소꿀템",
+    subtext: "좁은 화장실에도 깔끔하게",
+    price: "26,400원",
+    discount: "42%",
+    buttonText: "할인 링크",
+    size: "medium",
+  },
+  {
+    id: "b_group_1",
+    type: "group",
+    visible: true,
+    title: "오늘의 추천 묶음",
+    description: "자주 찾는 링크 모음",
+    expandedByDefault: true,
+    links: [
+      { id: "g1", title: "오늘의 메인딜", url: "https://example.com/deal" },
+      { id: "g2", title: "재입고 알림", url: "https://example.com/restock" },
+    ],
   },
 ];
 
+const nextId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
+
+const urlError = (url?: string) => {
+  if (!url) return "URL 필수";
+  const ok = /^https?:\/\//.test(url);
+  return ok ? null : "URL 형식 오류";
+};
+
+const blockError = (block: Block) => {
+  if (!block.visible) return null;
+  if (block.type === "profile") {
+    if (!block.title.trim()) return "필수값 누락";
+    return null;
+  }
+  if (block.type === "single") {
+    if (!block.title.trim() || !block.buttonText.trim()) return "필수값 누락";
+    return urlError(block.url);
+  }
+  if (!block.title.trim()) return "필수값 누락";
+  const bad = block.links.find((l) => !l.title.trim() || urlError(l.url));
+  if (!bad) return null;
+  if (!bad.title.trim()) return "필수값 누락";
+  return urlError(bad.url);
+};
+
 export default function AdminPage() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [draftName, setDraftName] = useState("");
-  const [draftButtonText, setDraftButtonText] = useState("");
-  const [draftLinkUrl, setDraftLinkUrl] = useState("");
+  const [slug] = useState("/hotdeals");
+  const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
+  const [selectedId, setSelectedId] = useState(initialBlocks[0].id);
+  const [saveState, setSaveState] = useState<SaveState>("saved");
+  const [viewport, setViewport] = useState("390px");
+  const [mobileTab, setMobileTab] = useState<"blocks" | "edit" | "preview">("blocks");
 
-  const startEdit = (product: Product) => {
-    setEditingId(product.id);
-    setDraftName(product.name);
-    setDraftButtonText(product.buttonText);
-    setDraftLinkUrl(product.linkUrl);
+  const selected = blocks.find((b) => b.id === selectedId) ?? blocks[0];
+
+  const withDirty = (updater: (prev: Block[]) => Block[]) => {
+    setBlocks((prev) => updater(prev));
+    setSaveState("dirty");
   };
 
-  const cancelEdit = () => {
-    setEditingId(null);
-    setDraftName("");
-    setDraftButtonText("");
-    setDraftLinkUrl("");
+  const updateBlock = (id: string, patch: Partial<Block>) => {
+    withDirty((prev) => prev.map((b) => (b.id === id ? ({ ...b, ...patch } as Block) : b)));
   };
 
-  const saveEdit = (id: number) => {
-    const name = draftName.trim();
-    const buttonText = draftButtonText.trim();
-    const linkUrl = draftLinkUrl.trim();
+  const addBlock = (type: Block["type"]) => {
+    const block: Block =
+      type === "profile"
+        ? {
+            id: nextId("b_profile"),
+            type,
+            visible: true,
+            title: "새 프로필",
+            intro: "소개 문구",
+            notice: "",
+            imageUrl: "https://picsum.photos/seed/new-profile/480/260",
+          }
+        : type === "single"
+          ? {
+              id: nextId("b_single"),
+              type,
+              visible: true,
+              title: "새 단일 링크",
+              url: "https://",
+              thumbnailUrl: "https://picsum.photos/seed/new-product/240/240",
+              badge: "",
+              subtext: "",
+              price: "",
+              discount: "",
+              buttonText: "보러가기",
+              size: "medium",
+            }
+          : {
+              id: nextId("b_group"),
+              type,
+              visible: true,
+              title: "새 그룹",
+              description: "",
+              expandedByDefault: true,
+              links: [{ id: nextId("gl"), title: "새 링크", url: "https://" }],
+            };
 
-    if (!name || !buttonText || !linkUrl) {
-      alert("상품명, 버튼 문구, 상품 링크를 모두 입력해줘.");
+    withDirty((prev) => [...prev, block]);
+    setSelectedId(block.id);
+  };
+
+  const move = (id: string, dir: -1 | 1) => {
+    withDirty((prev) => {
+      const idx = prev.findIndex((b) => b.id === id);
+      const next = idx + dir;
+      if (idx < 0 || next < 0 || next >= prev.length) return prev;
+      const copied = [...prev];
+      [copied[idx], copied[next]] = [copied[next], copied[idx]];
+      return copied;
+    });
+  };
+
+  const duplicate = (id: string) => {
+    withDirty((prev) => {
+      const idx = prev.findIndex((b) => b.id === id);
+      if (idx < 0) return prev;
+      const original = prev[idx];
+      const clone: Block = { ...original, id: nextId(original.type === "single" ? "b_single" : original.type === "group" ? "b_group" : "b_profile") } as Block;
+      const copied = [...prev];
+      copied.splice(idx + 1, 0, clone);
+      return copied;
+    });
+  };
+
+  const remove = (id: string) => {
+    withDirty((prev) => prev.filter((b) => b.id !== id));
+    if (selectedId === id) {
+      const remain = blocks.filter((b) => b.id !== id);
+      if (remain[0]) setSelectedId(remain[0].id);
+    }
+  };
+
+  const save = async () => {
+    const hasError = blocks.some((b) => !!blockError(b));
+    if (hasError) {
+      setSaveState("error");
       return;
     }
+    setSaveState("saving");
+    await new Promise((r) => setTimeout(r, 700));
+    setSaveState("saved");
+  };
 
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, name, buttonText, linkUrl } : p)),
+  const statusText =
+    saveState === "saved"
+      ? "저장됨"
+      : saveState === "saving"
+        ? "저장 중..."
+        : saveState === "dirty"
+          ? "미저장 변경사항"
+          : "저장 실패(재시도)";
+
+  const visibleBlocks = useMemo(() => blocks.filter((b) => b.visible), [blocks]);
+
+  const renderEditor = () => {
+    if (!selected) return null;
+
+    if (selected.type === "profile") {
+      return (
+        <div className={styles.formGrid}>
+          <label>
+            프로필 이미지 URL
+            <input value={selected.imageUrl} onChange={(e) => updateBlock(selected.id, { imageUrl: e.target.value })} />
+          </label>
+          <label>
+            페이지 타이틀
+            <input value={selected.title} onChange={(e) => updateBlock(selected.id, { title: e.target.value })} />
+          </label>
+          <label>
+            소개 문구
+            <textarea value={selected.intro} onChange={(e) => updateBlock(selected.id, { intro: e.target.value })} />
+          </label>
+          <label>
+            공지 문구
+            <textarea value={selected.notice ?? ""} onChange={(e) => updateBlock(selected.id, { notice: e.target.value })} />
+          </label>
+        </div>
+      );
+    }
+
+    if (selected.type === "single") {
+      return (
+        <div className={styles.formGrid}>
+          <label>
+            제목
+            <input value={selected.title} onChange={(e) => updateBlock(selected.id, { title: e.target.value })} />
+          </label>
+          <label>
+            URL
+            <input value={selected.url} onChange={(e) => updateBlock(selected.id, { url: e.target.value })} />
+          </label>
+          <label>
+            썸네일 URL
+            <input value={selected.thumbnailUrl} onChange={(e) => updateBlock(selected.id, { thumbnailUrl: e.target.value })} />
+          </label>
+          <label>
+            배지
+            <input value={selected.badge ?? ""} onChange={(e) => updateBlock(selected.id, { badge: e.target.value })} />
+          </label>
+          <label>
+            서브텍스트
+            <input value={selected.subtext ?? ""} onChange={(e) => updateBlock(selected.id, { subtext: e.target.value })} />
+          </label>
+          <label>
+            가격
+            <input value={selected.price ?? ""} onChange={(e) => updateBlock(selected.id, { price: e.target.value })} />
+          </label>
+          <label>
+            할인
+            <input value={selected.discount ?? ""} onChange={(e) => updateBlock(selected.id, { discount: e.target.value })} />
+          </label>
+          <label>
+            버튼 문구
+            <input value={selected.buttonText} onChange={(e) => updateBlock(selected.id, { buttonText: e.target.value })} />
+          </label>
+          <label>
+            카드 크기
+            <select value={selected.size} onChange={(e) => updateBlock(selected.id, { size: e.target.value as SingleLinkBlock["size"] })}>
+              <option value="small">small</option>
+              <option value="medium">medium</option>
+              <option value="large">large</option>
+            </select>
+          </label>
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.formGrid}>
+        <label>
+          그룹 제목
+          <input value={selected.title} onChange={(e) => updateBlock(selected.id, { title: e.target.value })} />
+        </label>
+        <label>
+          그룹 설명
+          <input value={selected.description ?? ""} onChange={(e) => updateBlock(selected.id, { description: e.target.value })} />
+        </label>
+        <label className={styles.checkLabel}>
+          <input type="checkbox" checked={selected.expandedByDefault} onChange={(e) => updateBlock(selected.id, { expandedByDefault: e.target.checked })} />
+          기본 펼침
+        </label>
+        <div className={styles.groupLinks}>
+          <strong>하위 링크</strong>
+          {selected.links.map((l) => (
+            <div key={l.id} className={styles.groupRow}>
+              <input
+                value={l.title}
+                placeholder="링크 제목"
+                onChange={(e) =>
+                  updateBlock(selected.id, {
+                    links: selected.links.map((item) => (item.id === l.id ? { ...item, title: e.target.value } : item)),
+                  })
+                }
+              />
+              <input
+                value={l.url}
+                placeholder="https://..."
+                onChange={(e) =>
+                  updateBlock(selected.id, {
+                    links: selected.links.map((item) => (item.id === l.id ? { ...item, url: e.target.value } : item)),
+                  })
+                }
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  updateBlock(selected.id, {
+                    links: selected.links.filter((item) => item.id !== l.id),
+                  })
+                }
+              >
+                삭제
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className={styles.secondaryBtn}
+            onClick={() =>
+              updateBlock(selected.id, {
+                links: [...selected.links, { id: nextId("gl"), title: "", url: "https://" }],
+              })
+            }
+          >
+            + 하위 링크 추가
+          </button>
+        </div>
+      </div>
     );
-    cancelEdit();
   };
 
-  const removeProduct = (id: number) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    if (editingId === id) cancelEdit();
-  };
+  const panelBlockList = (
+    <div className={styles.panel}>
+      <div className={styles.panelHead}>
+        <h3>블록 리스트</h3>
+        <div className={styles.addMenu}>
+          <button onClick={() => addBlock("profile")}>+ 프로필</button>
+          <button onClick={() => addBlock("single")}>+ 단일링크</button>
+          <button onClick={() => addBlock("group")}>+ 그룹링크</button>
+        </div>
+      </div>
+
+      <ul className={styles.blockList}>
+        {blocks.map((b, idx) => {
+          const error = blockError(b);
+          return (
+            <li key={b.id} className={`${styles.blockItem} ${selectedId === b.id ? styles.active : ""}`} onClick={() => setSelectedId(b.id)}>
+              <div className={styles.blockMain}>
+                <span>☰ {b.type === "profile" ? "프로필" : b.type === "single" ? "단일링크" : "그룹링크"}</span>
+                <button
+                  className={styles.eyeBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateBlock(b.id, { visible: !b.visible });
+                  }}
+                >
+                  {b.visible ? "👁" : "🙈"}
+                </button>
+              </div>
+              <div className={styles.blockSub}>{b.title || "(제목 없음)"}</div>
+              {error ? <span className={styles.errorBadge}>{error}</span> : null}
+              <div className={styles.rowActions}>
+                <button onClick={(e) => { e.stopPropagation(); move(b.id, -1); }} disabled={idx === 0}>↑</button>
+                <button onClick={(e) => { e.stopPropagation(); move(b.id, 1); }} disabled={idx === blocks.length - 1}>↓</button>
+                <button onClick={(e) => { e.stopPropagation(); duplicate(b.id); }}>복제</button>
+                <button onClick={(e) => { e.stopPropagation(); remove(b.id); }}>삭제</button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+
+  const panelEditor = (
+    <div className={styles.panel}>
+      <div className={styles.panelHead}>
+        <h3>블록 편집</h3>
+        <span>{selected?.type ?? "-"}</span>
+      </div>
+      {selected ? renderEditor() : <p>블록을 선택해줘.</p>}
+    </div>
+  );
+
+  const panelPreview = (
+    <div className={styles.panel}>
+      <div className={styles.panelHead}>
+        <h3>모바일 미리보기</h3>
+        <select value={viewport} onChange={(e) => setViewport(e.target.value)}>
+          <option value="390px">390px</option>
+          <option value="430px">430px</option>
+        </select>
+      </div>
+      <div className={styles.previewShell} style={{ width: viewport }}>
+        <div className={styles.previewInner}>
+          {visibleBlocks.map((b) =>
+            b.type === "profile" ? (
+              <section key={b.id} className={styles.previewProfile}>
+                <img src={b.imageUrl} alt={b.title} />
+                <h4>{b.title}</h4>
+                <p>{b.intro}</p>
+                {b.notice ? <small>{b.notice}</small> : null}
+              </section>
+            ) : b.type === "single" ? (
+              <article key={b.id} className={styles.previewCard}>
+                <img src={b.thumbnailUrl} alt={b.title} />
+                <div>
+                  {b.badge ? <em>{b.badge}</em> : null}
+                  <strong>{b.title}</strong>
+                  {b.subtext ? <p>{b.subtext}</p> : null}
+                  <div className={styles.priceLine}>
+                    {b.discount ? <span>{b.discount}</span> : null}
+                    {b.price ? <b>{b.price}</b> : null}
+                  </div>
+                  <button>{b.buttonText}</button>
+                </div>
+              </article>
+            ) : (
+              <section key={b.id} className={styles.previewGroup}>
+                <h4>{b.title}</h4>
+                {b.description ? <p>{b.description}</p> : null}
+                <ul>
+                  {b.links.map((l) => (
+                    <li key={l.id}>{l.title || "(제목 없음)"}</li>
+                  ))}
+                </ul>
+              </section>
+            ),
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <main className={styles.page}>
-      <aside className={styles.sidebar}>
-        <h1>Back Office</h1>
-        <nav>
-          <a className={styles.active}>상품 관리</a>
-          <a>프로필/소개</a>
-          <a>링크 관리</a>
-          <a>정책 (예정)</a>
-        </nav>
-      </aside>
-
-      <section className={styles.content}>
-        <header className={styles.header}>
-          <div>
-            <h2>상품 관리</h2>
-            <p>링크 페이지에 노출될 상품을 관리합니다.</p>
-          </div>
-          <button className={styles.addButton}>+ 상품 추가</button>
-        </header>
-
-        <div className={styles.tableWrap}>
-          <table>
-            <thead>
-              <tr>
-                <th>순서</th>
-                <th>상품명</th>
-                <th>버튼 문구</th>
-                <th>상품 링크</th>
-                <th>작업</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p) => (
-                <tbody key={p.id}>
-                  <tr>
-                    <td>{p.order}</td>
-                    <td>{p.name}</td>
-                    <td>{p.buttonText}</td>
-                    <td className={styles.urlCell}>{p.linkUrl}</td>
-                    <td>
-                      <button onClick={() => startEdit(p)}>수정</button>
-                      <button onClick={() => removeProduct(p.id)}>삭제</button>
-                    </td>
-                  </tr>
-
-                  {editingId === p.id && (
-                    <tr className={styles.editRow}>
-                      <td colSpan={5}>
-                        <section className={styles.editorInline}>
-                          <h3>상품 수정 #{p.id}</h3>
-                          <div className={styles.editorGrid}>
-                            <label>
-                              상품명
-                              <input
-                                value={draftName}
-                                onChange={(e) => setDraftName(e.target.value)}
-                                placeholder="상품명을 입력하세요"
-                              />
-                            </label>
-                            <label>
-                              버튼 문구
-                              <input
-                                value={draftButtonText}
-                                onChange={(e) => setDraftButtonText(e.target.value)}
-                                placeholder="버튼 문구를 입력하세요"
-                              />
-                            </label>
-                            <label className={styles.linkField}>
-                              상품 링크 URL
-                              <input
-                                value={draftLinkUrl}
-                                onChange={(e) => setDraftLinkUrl(e.target.value)}
-                                placeholder="https://..."
-                              />
-                            </label>
-                          </div>
-                          <div className={styles.editorActions}>
-                            <button className={styles.saveButton} onClick={() => saveEdit(p.id)}>
-                              저장
-                            </button>
-                            <button className={styles.cancelButton} onClick={cancelEdit}>
-                              취소
-                            </button>
-                          </div>
-                        </section>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              ))}
-            </tbody>
-          </table>
+      <header className={styles.topbar}>
+        <div>
+          <strong>{slug}</strong>
+          <span className={`${styles.stateBadge} ${styles[saveState]}`}>{statusText}</span>
         </div>
-      </section>
+        <div className={styles.topActions}>
+          <button className={styles.secondaryBtn}>미리보기</button>
+          <button className={styles.secondaryBtn} onClick={save}>저장</button>
+          <button className={styles.primaryBtn}>발행</button>
+        </div>
+      </header>
+
+      <div className={styles.desktopGrid}>
+        {panelBlockList}
+        {panelEditor}
+        {panelPreview}
+      </div>
+
+      <div className={styles.mobileOnly}>
+        <nav className={styles.mobileTabs}>
+          <button className={mobileTab === "blocks" ? styles.activeTab : ""} onClick={() => setMobileTab("blocks")}>블록</button>
+          <button className={mobileTab === "edit" ? styles.activeTab : ""} onClick={() => setMobileTab("edit")}>편집</button>
+          <button className={mobileTab === "preview" ? styles.activeTab : ""} onClick={() => setMobileTab("preview")}>미리보기</button>
+        </nav>
+        {mobileTab === "blocks" ? panelBlockList : mobileTab === "edit" ? panelEditor : panelPreview}
+      </div>
+
+      <footer className={styles.footerBar}>
+        <span>{saveState === "dirty" ? "변경사항 있음" : statusText}</span>
+        <div>
+          <button className={styles.secondaryBtn} onClick={() => addBlock("single")}>+ 블록 추가</button>
+          <button className={styles.primaryBtn} onClick={save}>저장</button>
+        </div>
+      </footer>
     </main>
   );
 }
