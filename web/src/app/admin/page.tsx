@@ -428,7 +428,12 @@ export default function AdminPage() {
                 {b.notice ? <small>{b.notice}</small> : null}
               </section>
             ) : b.type === "single" ? (
-              <article key={b.id} className={styles.previewCard}>
+              <article
+                key={b.id}
+                className={`${styles.previewCard} ${
+                  b.size === "small" ? styles.previewCardSmall : b.size === "large" ? styles.previewCardLarge : styles.previewCardMedium
+                }`}
+              >
                 <img src={b.thumbnailUrl} alt={b.title} />
                 <div>
                   {b.badge ? <em>{b.badge}</em> : null}

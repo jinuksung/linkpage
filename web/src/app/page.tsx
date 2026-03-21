@@ -29,7 +29,12 @@ export default function LinkPage() {
 
       <section className={styles.listWrap}>
         {singles.map((product) => (
-          <article key={product.id} className={styles.productCard}>
+          <article
+            key={product.id}
+            className={`${styles.productCard} ${
+              product.size === "small" ? styles.productCardSmall : product.size === "large" ? styles.productCardLarge : styles.productCardMedium
+            }`}
+          >
             <img className={styles.thumb} src={product.thumbnailUrl} alt={product.title} />
             <div className={styles.productBody}>
               <h2>{product.title}</h2>

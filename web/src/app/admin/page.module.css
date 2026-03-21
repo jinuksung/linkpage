@@ -268,11 +268,33 @@
   gap: 8px;
 }
 
+.previewCardSmall {
+  grid-template-columns: 56px 1fr;
+}
+
+.previewCardMedium {
+  grid-template-columns: 70px 1fr;
+}
+
+.previewCardLarge {
+  grid-template-columns: 92px 1fr;
+}
+
 .previewCard img {
   width: 70px;
   height: 70px;
   border-radius: 8px;
   object-fit: cover;
+}
+
+.previewCardSmall img {
+  width: 56px;
+  height: 56px;
+}
+
+.previewCardLarge img {
+  width: 92px;
+  height: 92px;
 }
 
 .previewCard em {
