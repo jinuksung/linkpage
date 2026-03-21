@@ -219,10 +219,23 @@
 .previewProfile,
 .previewGroup,
 .previewCard {
+  position: relative;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 10px;
+}
+
+.previewEditBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .previewProfile img {

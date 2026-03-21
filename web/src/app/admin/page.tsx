@@ -406,6 +406,15 @@ export default function AdminPage() {
               <div className={styles.blockSub}>{b.title || "(제목 없음)"}</div>
               {error ? <span className={styles.errorBadge}>{error}</span> : null}
               <div className={styles.rowActions}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedId(b.id);
+                    setMobileTab("edit");
+                  }}
+                >
+                  편집
+                </button>
                 <button onClick={(e) => { e.stopPropagation(); move(b.id, -1); }} disabled={idx === 0}>↑</button>
                 <button onClick={(e) => { e.stopPropagation(); move(b.id, 1); }} disabled={idx === blocks.length - 1}>↓</button>
                 <button onClick={(e) => { e.stopPropagation(); duplicate(b.id); }}>복제</button>
@@ -442,6 +451,15 @@ export default function AdminPage() {
           {visibleBlocks.map((b) =>
             b.type === "profile" ? (
               <section key={b.id} className={styles.previewProfile}>
+                <button
+                  className={styles.previewEditBtn}
+                  onClick={() => {
+                    setSelectedId(b.id);
+                    setMobileTab("edit");
+                  }}
+                >
+                  편집
+                </button>
                 <img src={b.imageUrl} alt={b.title} />
                 <h4>{b.title}</h4>
                 <p>{b.intro}</p>
@@ -449,6 +467,15 @@ export default function AdminPage() {
               </section>
             ) : b.type === "single" ? (
               <article key={b.id} className={styles.previewCard}>
+                <button
+                  className={styles.previewEditBtn}
+                  onClick={() => {
+                    setSelectedId(b.id);
+                    setMobileTab("edit");
+                  }}
+                >
+                  편집
+                </button>
                 <img src={b.thumbnailUrl} alt={b.title} />
                 <div>
                   {b.badge ? <em>{b.badge}</em> : null}
@@ -463,6 +490,15 @@ export default function AdminPage() {
               </article>
             ) : (
               <section key={b.id} className={styles.previewGroup}>
+                <button
+                  className={styles.previewEditBtn}
+                  onClick={() => {
+                    setSelectedId(b.id);
+                    setMobileTab("edit");
+                  }}
+                >
+                  편집
+                </button>
                 <h4>{b.title}</h4>
                 {b.description ? <p>{b.description}</p> : null}
                 <ul>
