@@ -1,23 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styles from "./page.module.css";
 import { initialBlocks, type Block, type SingleLinkBlock } from "../../lib/page-data";
+import { emptyProduct, type ProductMaster } from "../../lib/product-master";
 
 type SaveState = "saved" | "dirty" | "saving" | "error";
 type AdminTab = "blocks" | "products";
 
-type ProductMaster = {
-  id: string;
-  name: string;
-  seedKeyword: string;
-  priceAnchor: string;
-  thumbAnchor: string;
-  brand: string;
-  modelNo: string;
-  status: "active" | "inactive";
-  updatedAt: string;
-};
 
 const nextId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -48,32 +38,9 @@ export default function AdminPage() {
   const [slug] = useState("/hotdeals");
   const [activeTab, setActiveTab] = useState<AdminTab>("blocks");
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
-  const [products, setProducts] = useState<ProductMaster[]>([
-    {
-      id: "seed_1",
-      name: "샘플 상품",
-      seedKeyword: "샘플 상품명",
-      priceAnchor: "19900",
-      thumbAnchor: "https://picsum.photos/seed/product1/240/240",
-      brand: "샘플브랜드",
-      modelNo: "SAMPLE-001",
-      status: "active",
-      updatedAt: new Date().toISOString(),
-    },
-  ]);
-  const [savedProducts, setSavedProducts] = useState<ProductMaster[]>([
-    {
-      id: "seed_saved_1",
-      name: "샘플 상품",
-      seedKeyword: "샘플 상품명",
-      priceAnchor: "19900",
-      thumbAnchor: "https://picsum.photos/seed/product1/240/240",
-      brand: "샘플브랜드",
-      modelNo: "SAMPLE-001",
-      status: "active",
-      updatedAt: new Date().toISOString(),
-    },
-  ]);
+  const [products, setProducts] = useState<ProductMaster[]>([]);
+  const [savedProducts, setSavedProducts] = useState<ProductMaster[]>([]);
+  const [productLoading, setProductLoading] = useState(true);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productQuery, setProductQuery] = useState("");
   const [selectedId, setSelectedId] = useState(initialBlocks[0].id);
@@ -84,6 +51,31 @@ export default function AdminPage() {
   const [dragBlockId, setDragBlockId] = useState<string | null>(null);
 
   const selected = blocks.find((b) => b.id === selectedId) ?? blocks[0];
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/products", { cache: "no-store" });
+        const json = await res.json();
+        if (!alive) return;
+        const list: ProductMaster[] = Array.isArray(json?.items) ? json.items : [];
+        setProducts(list);
+        setSavedProducts(list);
+        setSelectedProductId((prev) => prev ?? list[0]?.id ?? null);
+      } catch {
+        if (!alive) return;
+        setProducts([]);
+        setSavedProducts([]);
+      } finally {
+        if (alive) setProductLoading(false);
+      }
+    };
+    load();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const withDirty = (updater: (prev: Block[]) => Block[]) => {
     setBlocks((prev) => updater(prev));
@@ -215,38 +207,54 @@ export default function AdminPage() {
   };
 
   const addProduct = () => {
-    const created: ProductMaster = {
-      id: nextId("p"),
-      name: "",
-      seedKeyword: "",
-      priceAnchor: "",
-      thumbAnchor: "",
-      brand: "",
-      modelNo: "",
-      status: "active",
-      updatedAt: new Date().toISOString(),
-    };
+    const created: ProductMaster = emptyProduct(nextId("p"));
     setProducts((prev) => [created, ...prev]);
     setSelectedProductId(created.id);
     setSaveState("dirty");
   };
 
-  const saveProduct = (id: string) => {
+  const saveProduct = async (id: string) => {
     const target = products.find((p) => p.id === id);
     if (!target) return;
 
-    setSavedProducts((prev) => {
-      const exists = prev.some((p) => p.id === id);
-      if (exists) {
-        return prev.map((p) => (p.id === id ? { ...target, updatedAt: new Date().toISOString() } : p));
-      }
-      return [{ ...target, updatedAt: new Date().toISOString() }, ...prev];
+    setSaveState("saving");
+    const exists = savedProducts.some((p) => p.id === id);
+
+    const res = await fetch(exists ? `/api/products/${id}` : "/api/products", {
+      method: exists ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(target),
     });
 
+    if (!res.ok) {
+      setSaveState("error");
+      return;
+    }
+
+    const json = await res.json();
+    const saved = json?.item as ProductMaster;
+
+    setSavedProducts((prev) => {
+      const has = prev.some((p) => p.id === saved.id);
+      if (has) return prev.map((p) => (p.id === saved.id ? saved : p));
+      return [saved, ...prev];
+    });
+
+    setProducts((prev) => prev.map((p) => (p.id === id ? saved : p)));
     setSaveState("saved");
   };
 
-  const removeProduct = (id: string) => {
+  const removeProduct = async (id: string) => {
+    const existedInSaved = savedProducts.some((p) => p.id === id);
+
+    if (existedInSaved) {
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setSaveState("error");
+        return;
+      }
+    }
+
     setProducts((prev) => prev.filter((p) => p.id !== id));
     setSavedProducts((prev) => prev.filter((p) => p.id !== id));
     if (selectedProductId === id) setSelectedProductId(null);
@@ -576,21 +584,25 @@ export default function AdminPage() {
             value={productQuery}
             onChange={(e) => setProductQuery(e.target.value)}
           />
-          <ul className={styles.blockList}>
-            {filteredProducts.map((p) => (
-              <li
-                key={p.id}
-                className={`${styles.blockItem} ${selectedProductId === p.id ? styles.active : ""}`}
-                onClick={() => setSelectedProductId(p.id)}
-              >
-                <div className={styles.blockMain}>
-                  <strong>{p.name || "(이름 없음)"}</strong>
-                  <span className={styles.statusPill}>{p.status}</span>
-                </div>
-                <div className={styles.blockSub}>{p.seedKeyword || "seed_keyword 미입력"}</div>
-              </li>
-            ))}
-          </ul>
+          {productLoading ? (
+            <p>불러오는 중...</p>
+          ) : (
+            <ul className={styles.blockList}>
+              {filteredProducts.map((p) => (
+                <li
+                  key={p.id}
+                  className={`${styles.blockItem} ${selectedProductId === p.id ? styles.active : ""}`}
+                  onClick={() => setSelectedProductId(p.id)}
+                >
+                  <div className={styles.blockMain}>
+                    <strong>{p.name || "(이름 없음)"}</strong>
+                    <span className={styles.statusPill}>{p.status}</span>
+                  </div>
+                  <div className={styles.blockSub}>{p.seedKeyword || "seed_keyword 미입력"}</div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className={styles.panel}>
