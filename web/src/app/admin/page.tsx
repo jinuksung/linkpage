@@ -567,6 +567,10 @@ export default function AdminPage() {
                         소개 문구
                         <textarea value={b.intro} onChange={(e) => updateBlock(b.id, { intro: e.target.value })} />
                       </label>
+                      <label>
+                        공지 문구
+                        <textarea value={b.notice ?? ""} onChange={(e) => updateBlock(b.id, { notice: e.target.value })} />
+                      </label>
                     </div>
                   ) : (
                     <div className={styles.formGrid}>
