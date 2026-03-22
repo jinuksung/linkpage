@@ -611,7 +611,9 @@ export default function AdminPage() {
             <div className={styles.formGrid}>
               <label>상품명<input value={selectedProduct.name} onChange={(e) => upsertProduct(selectedProduct.id, { name: e.target.value })} /></label>
               <label>seed_keyword<input value={selectedProduct.seedKeyword} onChange={(e) => upsertProduct(selectedProduct.id, { seedKeyword: e.target.value })} /></label>
-              <label>price_anchor<input value={selectedProduct.priceAnchor} onChange={(e) => upsertProduct(selectedProduct.id, { priceAnchor: e.target.value })} /></label>
+              <label>price_anchor
+                <input type="number" inputMode="decimal" step="0.01" value={selectedProduct.priceAnchor} onChange={(e) => upsertProduct(selectedProduct.id, { priceAnchor: e.target.value })} />
+              </label>
               <label>thumb_anchor<input value={selectedProduct.thumbAnchor} onChange={(e) => upsertProduct(selectedProduct.id, { thumbAnchor: e.target.value })} /></label>
               <label>브랜드<input value={selectedProduct.brand} onChange={(e) => upsertProduct(selectedProduct.id, { brand: e.target.value })} /></label>
               <label>모델번호<input value={selectedProduct.modelNo} onChange={(e) => upsertProduct(selectedProduct.id, { modelNo: e.target.value })} /></label>

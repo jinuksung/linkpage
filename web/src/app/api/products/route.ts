@@ -8,7 +8,7 @@ type Row = {
   brand: string | null;
   model_no: string | null;
   status: "active" | "inactive";
-  origin_product_url: string | null;
+  price_anchor: number | null;
   default_image_url: string | null;
   updated_at: string;
 };
@@ -27,7 +27,7 @@ const toItem = (r: Row) => ({
   id: r.id,
   name: r.name ?? "",
   seedKeyword: r.product_key ?? "",
-  priceAnchor: r.origin_product_url ?? "",
+  priceAnchor: r.price_anchor == null ? "" : String(r.price_anchor),
   thumbAnchor: r.default_image_url ?? "",
   brand: r.brand ?? "",
   modelNo: r.model_no ?? "",
@@ -35,12 +35,20 @@ const toItem = (r: Row) => ({
   updatedAt: r.updated_at,
 });
 
+const parsePrice = (value: unknown) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const num = Number(raw);
+  if (!Number.isFinite(num)) return undefined;
+  return num;
+};
+
 export async function GET() {
   try {
     const supabase = getClient();
     const { data, error } = await supabase
       .from("products_master")
-      .select("id,name,product_key,brand,model_no,status,origin_product_url,default_image_url,updated_at")
+      .select("id,name,product_key,brand,model_no,status,price_anchor,default_image_url,updated_at")
       .order("updated_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -54,6 +62,10 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const supabase = getClient();
+    const parsed = parsePrice(body.priceAnchor);
+    if (parsed === undefined) {
+      return NextResponse.json({ error: "price_anchor must be numeric" }, { status: 400 });
+    }
 
     const { data, error } = await supabase
       .from("products_master")
@@ -63,10 +75,10 @@ export async function POST(req: Request) {
         brand: body.brand?.trim() || null,
         model_no: body.modelNo?.trim() || null,
         default_image_url: body.thumbAnchor?.trim() || null,
-        origin_product_url: body.priceAnchor?.trim() || null,
+        price_anchor: parsed,
         status: body.status === "inactive" ? "inactive" : "active",
       })
-      .select("id,name,product_key,brand,model_no,status,origin_product_url,default_image_url,updated_at")
+      .select("id,name,product_key,brand,model_no,status,price_anchor,default_image_url,updated_at")
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
