@@ -50,7 +50,20 @@ export default function AdminPage() {
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [products, setProducts] = useState<ProductMaster[]>([
     {
-      id: nextId("p"),
+      id: "seed_1",
+      name: "샘플 상품",
+      seedKeyword: "샘플 상품명",
+      priceAnchor: "19900",
+      thumbAnchor: "https://picsum.photos/seed/product1/240/240",
+      brand: "샘플브랜드",
+      modelNo: "SAMPLE-001",
+      status: "active",
+      updatedAt: new Date().toISOString(),
+    },
+  ]);
+  const [savedProducts, setSavedProducts] = useState<ProductMaster[]>([
+    {
+      id: "seed_saved_1",
       name: "샘플 상품",
       seedKeyword: "샘플 상품명",
       priceAnchor: "19900",
@@ -218,8 +231,24 @@ export default function AdminPage() {
     setSaveState("dirty");
   };
 
+  const saveProduct = (id: string) => {
+    const target = products.find((p) => p.id === id);
+    if (!target) return;
+
+    setSavedProducts((prev) => {
+      const exists = prev.some((p) => p.id === id);
+      if (exists) {
+        return prev.map((p) => (p.id === id ? { ...target, updatedAt: new Date().toISOString() } : p));
+      }
+      return [{ ...target, updatedAt: new Date().toISOString() }, ...prev];
+    });
+
+    setSaveState("saved");
+  };
+
   const removeProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
+    setSavedProducts((prev) => prev.filter((p) => p.id !== id));
     if (selectedProductId === id) setSelectedProductId(null);
     setSaveState("dirty");
   };
@@ -581,6 +610,7 @@ export default function AdminPage() {
                 </select>
               </label>
               <div className={styles.rowActions}>
+                <button className={styles.primaryBtn} onClick={() => saveProduct(selectedProduct.id)}>상품 저장</button>
                 <button className={styles.dangerBtn} onClick={() => removeProduct(selectedProduct.id)}>상품 삭제</button>
               </div>
             </div>
@@ -591,10 +621,11 @@ export default function AdminPage() {
 
         <div className={styles.panel}>
           <div className={styles.panelHead}><h3>요약</h3></div>
+          <p className={styles.summaryHint}>※ 상품 저장 버튼을 누른 항목만 집계</p>
           <div className={styles.summaryCard}>
-            <p>총 상품: <strong>{products.length}</strong></p>
-            <p>활성 상품: <strong>{products.filter((p) => p.status === "active").length}</strong></p>
-            <p>seed 미입력: <strong>{products.filter((p) => !p.seedKeyword.trim()).length}</strong></p>
+            <p>총 상품: <strong>{savedProducts.length}</strong></p>
+            <p>활성 상품: <strong>{savedProducts.filter((p) => p.status === "active").length}</strong></p>
+            <p>seed 미입력: <strong>{savedProducts.filter((p) => !p.seedKeyword.trim()).length}</strong></p>
           </div>
         </div>
       </div>
