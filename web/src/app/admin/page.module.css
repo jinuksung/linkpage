@@ -60,6 +60,12 @@
   gap: 12px;
 }
 
+.productsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
 .tabBar {
   display: flex;
   gap: 8px;
@@ -581,6 +587,10 @@
 @media (min-width: 1101px) {
   .desktopGrid {
     display: grid;
+  }
+
+  .productsGrid {
+    grid-template-columns: 320px 1fr 430px;
   }
 
   .mobileOnly {

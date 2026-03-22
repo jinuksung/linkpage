@@ -535,7 +535,7 @@ export default function AdminPage() {
 
   const productsView = (
     <>
-      <div className={styles.desktopGrid}>
+      <div className={styles.productsGrid}>
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <h3>상품 마스터</h3>
