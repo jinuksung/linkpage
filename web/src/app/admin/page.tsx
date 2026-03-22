@@ -5,6 +5,19 @@ import styles from "./page.module.css";
 import { initialBlocks, type Block, type SingleLinkBlock } from "../../lib/page-data";
 
 type SaveState = "saved" | "dirty" | "saving" | "error";
+type AdminTab = "blocks" | "products";
+
+type ProductMaster = {
+  id: string;
+  name: string;
+  seedKeyword: string;
+  priceAnchor: string;
+  thumbAnchor: string;
+  brand: string;
+  modelNo: string;
+  status: "active" | "inactive";
+  updatedAt: string;
+};
 
 const nextId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -33,7 +46,23 @@ const blockError = (block: Block) => {
 
 export default function AdminPage() {
   const [slug] = useState("/hotdeals");
+  const [activeTab, setActiveTab] = useState<AdminTab>("blocks");
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
+  const [products, setProducts] = useState<ProductMaster[]>([
+    {
+      id: nextId("p"),
+      name: "샘플 상품",
+      seedKeyword: "샘플 상품명",
+      priceAnchor: "19900",
+      thumbAnchor: "https://picsum.photos/seed/product1/240/240",
+      brand: "샘플브랜드",
+      modelNo: "SAMPLE-001",
+      status: "active",
+      updatedAt: new Date().toISOString(),
+    },
+  ]);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [productQuery, setProductQuery] = useState("");
   const [selectedId, setSelectedId] = useState(initialBlocks[0].id);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [viewport, setViewport] = useState("390px");
@@ -148,6 +177,52 @@ export default function AdminPage() {
           : "저장 실패(재시도)";
 
   const visibleBlocks = useMemo(() => blocks.filter((b) => b.visible), [blocks]);
+
+  const filteredProducts = useMemo(() => {
+    const q = productQuery.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => [p.name, p.seedKeyword, p.brand, p.modelNo].join(" ").toLowerCase().includes(q));
+  }, [products, productQuery]);
+
+  const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
+
+  const upsertProduct = (id: string, patch: Partial<ProductMaster>) => {
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              ...patch,
+              updatedAt: new Date().toISOString(),
+            }
+          : p,
+      ),
+    );
+    setSaveState("dirty");
+  };
+
+  const addProduct = () => {
+    const created: ProductMaster = {
+      id: nextId("p"),
+      name: "",
+      seedKeyword: "",
+      priceAnchor: "",
+      thumbAnchor: "",
+      brand: "",
+      modelNo: "",
+      status: "active",
+      updatedAt: new Date().toISOString(),
+    };
+    setProducts((prev) => [created, ...prev]);
+    setSelectedProductId(created.id);
+    setSaveState("dirty");
+  };
+
+  const removeProduct = (id: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    if (selectedProductId === id) setSelectedProductId(null);
+    setSaveState("dirty");
+  };
 
   const renderSingleForm = (block: SingleLinkBlock) => (
     <div className={styles.formGrid}>
@@ -458,6 +533,74 @@ export default function AdminPage() {
     </div>
   );
 
+  const productsView = (
+    <>
+      <div className={styles.desktopGrid}>
+        <div className={styles.panel}>
+          <div className={styles.panelHead}>
+            <h3>상품 마스터</h3>
+            <button className={styles.secondaryBtn} onClick={addProduct}>+ 상품 추가</button>
+          </div>
+          <input
+            className={styles.searchInput}
+            placeholder="상품명/키워드 검색"
+            value={productQuery}
+            onChange={(e) => setProductQuery(e.target.value)}
+          />
+          <ul className={styles.blockList}>
+            {filteredProducts.map((p) => (
+              <li
+                key={p.id}
+                className={`${styles.blockItem} ${selectedProductId === p.id ? styles.active : ""}`}
+                onClick={() => setSelectedProductId(p.id)}
+              >
+                <div className={styles.blockMain}>
+                  <strong>{p.name || "(이름 없음)"}</strong>
+                  <span className={styles.statusPill}>{p.status}</span>
+                </div>
+                <div className={styles.blockSub}>{p.seedKeyword || "seed_keyword 미입력"}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className={styles.panel}>
+          <div className={styles.panelHead}><h3>상품 편집</h3></div>
+          {selectedProduct ? (
+            <div className={styles.formGrid}>
+              <label>상품명<input value={selectedProduct.name} onChange={(e) => upsertProduct(selectedProduct.id, { name: e.target.value })} /></label>
+              <label>seed_keyword<input value={selectedProduct.seedKeyword} onChange={(e) => upsertProduct(selectedProduct.id, { seedKeyword: e.target.value })} /></label>
+              <label>price_anchor<input value={selectedProduct.priceAnchor} onChange={(e) => upsertProduct(selectedProduct.id, { priceAnchor: e.target.value })} /></label>
+              <label>thumb_anchor<input value={selectedProduct.thumbAnchor} onChange={(e) => upsertProduct(selectedProduct.id, { thumbAnchor: e.target.value })} /></label>
+              <label>브랜드<input value={selectedProduct.brand} onChange={(e) => upsertProduct(selectedProduct.id, { brand: e.target.value })} /></label>
+              <label>모델번호<input value={selectedProduct.modelNo} onChange={(e) => upsertProduct(selectedProduct.id, { modelNo: e.target.value })} /></label>
+              <label>상태
+                <select value={selectedProduct.status} onChange={(e) => upsertProduct(selectedProduct.id, { status: e.target.value as ProductMaster["status"] })}>
+                  <option value="active">active</option>
+                  <option value="inactive">inactive</option>
+                </select>
+              </label>
+              <div className={styles.rowActions}>
+                <button className={styles.dangerBtn} onClick={() => removeProduct(selectedProduct.id)}>상품 삭제</button>
+              </div>
+            </div>
+          ) : (
+            <p>왼쪽에서 상품을 선택하거나 새로 추가해줘.</p>
+          )}
+        </div>
+
+        <div className={styles.panel}>
+          <div className={styles.panelHead}><h3>요약</h3></div>
+          <div className={styles.summaryCard}>
+            <p>총 상품: <strong>{products.length}</strong></p>
+            <p>활성 상품: <strong>{products.filter((p) => p.status === "active").length}</strong></p>
+            <p>seed 미입력: <strong>{products.filter((p) => !p.seedKeyword.trim()).length}</strong></p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <main className={styles.page}>
       <header className={styles.topbar}>
@@ -471,143 +614,154 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <div className={styles.desktopGrid}>
-        {panelBlockList}
-        {panelEditor}
-        {panelPreview}
+      <div className={styles.tabBar}>
+        <button className={activeTab === "blocks" ? styles.tabActive : ""} onClick={() => setActiveTab("blocks")}>블록 편집</button>
+        <button className={activeTab === "products" ? styles.tabActive : ""} onClick={() => setActiveTab("products")}>상품 마스터</button>
       </div>
 
-      <div className={styles.mobileOnly}>
-        <header className={styles.mobileHeader}>
-          <div className={styles.mobileBrand}>링크페이지 편집</div>
-        </header>
+      {activeTab === "blocks" ? (
+        <>
+          <div className={styles.desktopGrid}>
+            {panelBlockList}
+            {panelEditor}
+            {panelPreview}
+          </div>
 
-        <div className={styles.mobileBlockList}>
-          {blocks.map((b) => (
-            <article
-              key={b.id}
-              className={styles.mobileBlockCard}
-              draggable
-              onDragStart={() => setDragBlockId(b.id)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                if (dragBlockId) reorderBlocks(dragBlockId, b.id);
-                setDragBlockId(null);
-              }}
-              onDragEnd={() => setDragBlockId(null)}
-            >
-              <button
-                className={styles.mobileBlockHead}
-                onClick={() => {
-                  setSelectedId(b.id);
-                  setExpandedBlockId((prev) => (prev === b.id ? null : b.id));
-                }}
-              >
-                <span className={styles.mobileDrag}>⋮⋮</span>
-                <strong>{b.type === "profile" ? "프로필" : b.type === "single" ? "단일 링크" : "그룹 링크"}</strong>
-                <em>{b.title}</em>
-                <svg
-                  className={`${styles.mobileChevron} ${expandedBlockId === b.id ? styles.mobileChevronExpanded : ""}`}
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path d="M7 10l5 5 5-5" />
-                </svg>
-              </button>
+          <div className={styles.mobileOnly}>
+            <header className={styles.mobileHeader}>
+              <div className={styles.mobileBrand}>링크페이지 편집</div>
+            </header>
 
-              <div className={styles.mobileCardActions}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const idx = blocks.findIndex((x) => x.id === b.id);
-                    if (idx > 0) reorderBlocks(b.id, blocks[idx - 1].id);
+            <div className={styles.mobileBlockList}>
+              {blocks.map((b) => (
+                <article
+                  key={b.id}
+                  className={styles.mobileBlockCard}
+                  draggable
+                  onDragStart={() => setDragBlockId(b.id)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (dragBlockId) reorderBlocks(dragBlockId, b.id);
+                    setDragBlockId(null);
                   }}
+                  onDragEnd={() => setDragBlockId(null)}
                 >
-                  위로
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const idx = blocks.findIndex((x) => x.id === b.id);
-                    if (idx >= 0 && idx < blocks.length - 1) reorderBlocks(b.id, blocks[idx + 1].id);
-                  }}
-                >
-                  아래로
-                </button>
-                {b.type !== "profile" ? (
                   <button
-                    className={styles.dangerBtn}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(b.id);
+                    className={styles.mobileBlockHead}
+                    onClick={() => {
+                      setSelectedId(b.id);
+                      setExpandedBlockId((prev) => (prev === b.id ? null : b.id));
                     }}
                   >
-                    삭제
+                    <span className={styles.mobileDrag}>⋮⋮</span>
+                    <strong>{b.type === "profile" ? "프로필" : b.type === "single" ? "단일 링크" : "그룹 링크"}</strong>
+                    <em>{b.title}</em>
+                    <svg
+                      className={`${styles.mobileChevron} ${expandedBlockId === b.id ? styles.mobileChevronExpanded : ""}`}
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path d="M7 10l5 5 5-5" />
+                    </svg>
                   </button>
-                ) : null}
+
+                  <div className={styles.mobileCardActions}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const idx = blocks.findIndex((x) => x.id === b.id);
+                        if (idx > 0) reorderBlocks(b.id, blocks[idx - 1].id);
+                      }}
+                    >
+                      위로
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const idx = blocks.findIndex((x) => x.id === b.id);
+                        if (idx >= 0 && idx < blocks.length - 1) reorderBlocks(b.id, blocks[idx + 1].id);
+                      }}
+                    >
+                      아래로
+                    </button>
+                    {b.type !== "profile" ? (
+                      <button
+                        className={styles.dangerBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          remove(b.id);
+                        }}
+                      >
+                        삭제
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {expandedBlockId === b.id ? (
+                    <div className={styles.mobileInlineForm}>
+                      {b.type === "single" ? renderSingleForm(b) : b.type === "profile" ? (
+                        <div className={styles.formGrid}>
+                          <label>
+                            프로필 이미지 URL
+                            <input value={b.imageUrl} onChange={(e) => updateBlock(b.id, { imageUrl: e.target.value })} />
+                          </label>
+                          <label>
+                            페이지 타이틀
+                            <input value={b.title} onChange={(e) => updateBlock(b.id, { title: e.target.value })} />
+                          </label>
+                          <label>
+                            소개 문구
+                            <textarea value={b.intro} onChange={(e) => updateBlock(b.id, { intro: e.target.value })} />
+                          </label>
+                          <label>
+                            공지 문구
+                            <textarea value={b.notice ?? ""} onChange={(e) => updateBlock(b.id, { notice: e.target.value })} />
+                          </label>
+                        </div>
+                      ) : (
+                        <div className={styles.formGrid}>
+                          <label>
+                            그룹 제목
+                            <input value={b.title} onChange={(e) => updateBlock(b.id, { title: e.target.value })} />
+                          </label>
+                          <label>
+                            그룹 설명
+                            <input value={b.description ?? ""} onChange={(e) => updateBlock(b.id, { description: e.target.value })} />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+
+            <div className={`${styles.mobileBottomActions} ${mobilePreviewOpen ? styles.hiddenOnPreview : ""}`}>
+              <button className={styles.previewFab} onClick={() => setMobilePreviewOpen((v) => !v)}>
+                👁 미리보기
+              </button>
+              <button className={styles.addFab} onClick={() => addBlock("single")}>＋ 블록 추가</button>
+            </div>
+
+            {mobilePreviewOpen ? (
+              <div className={styles.mobilePreviewOverlay}>
+                <button className={styles.previewCloseFab} onClick={() => setMobilePreviewOpen(false)}>✕ 미리보기 닫기</button>
+                <div className={styles.mobilePreviewWrap}>{panelPreview}</div>
               </div>
-
-              {expandedBlockId === b.id ? (
-                <div className={styles.mobileInlineForm}>
-                  {b.type === "single" ? renderSingleForm(b) : b.type === "profile" ? (
-                    <div className={styles.formGrid}>
-                      <label>
-                        프로필 이미지 URL
-                        <input value={b.imageUrl} onChange={(e) => updateBlock(b.id, { imageUrl: e.target.value })} />
-                      </label>
-                      <label>
-                        페이지 타이틀
-                        <input value={b.title} onChange={(e) => updateBlock(b.id, { title: e.target.value })} />
-                      </label>
-                      <label>
-                        소개 문구
-                        <textarea value={b.intro} onChange={(e) => updateBlock(b.id, { intro: e.target.value })} />
-                      </label>
-                      <label>
-                        공지 문구
-                        <textarea value={b.notice ?? ""} onChange={(e) => updateBlock(b.id, { notice: e.target.value })} />
-                      </label>
-                    </div>
-                  ) : (
-                    <div className={styles.formGrid}>
-                      <label>
-                        그룹 제목
-                        <input value={b.title} onChange={(e) => updateBlock(b.id, { title: e.target.value })} />
-                      </label>
-                      <label>
-                        그룹 설명
-                        <input value={b.description ?? ""} onChange={(e) => updateBlock(b.id, { description: e.target.value })} />
-                      </label>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </article>
-          ))}
-        </div>
-
-        <div className={`${styles.mobileBottomActions} ${mobilePreviewOpen ? styles.hiddenOnPreview : ""}`}>
-          <button className={styles.previewFab} onClick={() => setMobilePreviewOpen((v) => !v)}>
-            👁 미리보기
-          </button>
-          <button className={styles.addFab} onClick={() => addBlock("single")}>＋ 블록 추가</button>
-        </div>
-
-        {mobilePreviewOpen ? (
-          <div className={styles.mobilePreviewOverlay}>
-            <button className={styles.previewCloseFab} onClick={() => setMobilePreviewOpen(false)}>✕ 미리보기 닫기</button>
-            <div className={styles.mobilePreviewWrap}>{panelPreview}</div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
 
-      <footer className={styles.footerBar}>
-        <span>{saveState === "dirty" ? "변경사항 있음" : statusText}</span>
-        <div>
-          <button className={styles.secondaryBtn} onClick={() => addBlock("single")}>+ 블록 추가</button>
-          <button className={styles.primaryBtn} onClick={save}>저장</button>
-        </div>
-      </footer>
+          <footer className={styles.footerBar}>
+            <span>{saveState === "dirty" ? "변경사항 있음" : statusText}</span>
+            <div>
+              <button className={styles.secondaryBtn} onClick={() => addBlock("single")}>+ 블록 추가</button>
+              <button className={styles.primaryBtn} onClick={save}>저장</button>
+            </div>
+          </footer>
+        </>
+      ) : (
+        productsView
+      )}
     </main>
   );
 }
