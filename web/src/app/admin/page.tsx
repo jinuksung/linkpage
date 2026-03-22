@@ -21,7 +21,7 @@ const blockError = (block: Block) => {
     return null;
   }
   if (block.type === "single") {
-    if (!block.title.trim() || !block.buttonText.trim()) return "필수값 누락";
+    if (!block.title.trim()) return "필수값 누락";
     return urlError(block.url);
   }
   if (!block.title.trim()) return "필수값 누락";
@@ -178,10 +178,6 @@ export default function AdminPage() {
       <label>
         할인
         <input value={block.discount ?? ""} onChange={(e) => updateBlock(block.id, { discount: e.target.value })} />
-      </label>
-      <label>
-        버튼 문구
-        <input value={block.buttonText} onChange={(e) => updateBlock(block.id, { buttonText: e.target.value })} />
       </label>
       <label>
         카드 크기
