@@ -610,7 +610,7 @@ export default function AdminPage() {
                 </select>
               </label>
               <div className={styles.rowActions}>
-                <button className={styles.primaryBtn} onClick={() => saveProduct(selectedProduct.id)}>상품 저장</button>
+                <button className={styles.productSaveBtn} onClick={() => saveProduct(selectedProduct.id)}>상품 저장</button>
                 <button className={styles.dangerBtn} onClick={() => removeProduct(selectedProduct.id)}>상품 삭제</button>
               </div>
             </div>
