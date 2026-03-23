@@ -141,7 +141,7 @@
   border-radius: 12px;
   padding: 8px;
   border: 1px solid #eceff3;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transition: transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease, border-color 200ms ease;
   opacity: 0;
   transform: translateY(8px);
   animation: fadeUp 420ms ease-out forwards;
@@ -149,7 +149,9 @@
 
 .productCard:hover {
   transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 10px 20px rgba(62, 42, 31, 0.08);
+  background: #fff3e8;
+  border-color: #e5c9ad;
+  box-shadow: 0 14px 28px rgba(62, 42, 31, 0.14);
 }
 
 .productCard:active {
