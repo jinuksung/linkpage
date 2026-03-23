@@ -34,7 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const supabase = getClient();
 
     const { data, error } = await supabase
-      .from("affiliate_links")
+      .from("ig_affiliate_links")
       .update({
         ig_account: body.igAccount === "hotorideals" ? "hotorideals" : "hotbeaverdeals",
         label: body.label?.trim() || "(이름 없음)",
@@ -56,7 +56,7 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   try {
     const { id } = await params;
     const supabase = getClient();
-    const { error } = await supabase.from("affiliate_links").delete().eq("id", id);
+    const { error } = await supabase.from("ig_affiliate_links").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   } catch (e) {

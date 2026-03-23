@@ -31,7 +31,7 @@ export async function GET() {
   try {
     const supabase = getClient();
     const { data, error } = await supabase
-      .from("affiliate_links")
+      .from("ig_affiliate_links")
       .select("id,ig_account,label,url,status,updated_at")
       .order("updated_at", { ascending: false });
 
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     const supabase = getClient();
 
     const { data, error } = await supabase
-      .from("affiliate_links")
+      .from("ig_affiliate_links")
       .insert({
         ig_account: body.igAccount === "hotorideals" ? "hotorideals" : "hotbeaverdeals",
         label: body.label?.trim() || "(이름 없음)",
