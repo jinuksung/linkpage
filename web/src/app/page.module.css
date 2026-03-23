@@ -108,6 +108,32 @@
   font-size: var(--fs-12);
 }
 
+.shareBtn {
+  margin: 12px auto 0;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid #e5c9ad;
+  border-radius: 999px;
+  background: #fff3e8;
+  color: #6d4a34;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.shareBtn:hover {
+  background: #ffe8d2;
+  box-shadow: 0 8px 16px rgba(62, 42, 31, 0.14);
+  transform: translateY(-1px);
+}
+
+.shareBtn:active {
+  transform: scale(0.97);
+}
+
 .listWrap {
   max-width: 430px;
   margin: 0 auto;

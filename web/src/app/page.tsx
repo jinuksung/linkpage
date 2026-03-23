@@ -8,14 +8,6 @@ export default function LinkPage() {
   return (
     <main className={styles.page}>
       <section className={styles.heroWrap}>
-        <button className={`${styles.floatBtn} ${styles.leftBtn}`} aria-label="share">
-          <svg className={styles.icon} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M14 4H20V10" />
-            <path d="M20 4L11 13" />
-            <path d="M20 14V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18V6C4 4.9 4.9 4 6 4H10" />
-          </svg>
-        </button>
-
         <div className={styles.heroSingle}>
           <img src={profile?.imageUrl ?? "/images/profile-main.jpg"} alt="프로필 이미지" />
         </div>
@@ -24,6 +16,15 @@ export default function LinkPage() {
           <h1>{profile?.title ?? "핫비버와 핫도리의 핫딜 모음집"}</h1>
           {profile?.intro ? <p>{profile.intro}</p> : null}
           {profile?.notice ? <small>{profile.notice}</small> : null}
+
+          <button className={styles.shareBtn} aria-label="공유하기">
+            <svg className={styles.icon} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M14 4H20V10" />
+              <path d="M20 4L11 13" />
+              <path d="M20 14V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18V6C4 4.9 4.9 4 6 4H10" />
+            </svg>
+            공유하기
+          </button>
         </div>
       </section>
 
