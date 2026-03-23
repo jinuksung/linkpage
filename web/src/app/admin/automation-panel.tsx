@@ -4,6 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "./page.module.css";
 import { emptyAutomationRule, type AffiliateLink, type AutomationRule } from "../../lib/automation";
 
+type IgPost = {
+  id: string;
+  caption: string;
+  mediaType: string;
+  mediaUrl: string;
+  thumbnailUrl: string;
+  permalink: string;
+  timestamp: string;
+};
+
 const nextId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
 
 export default function AutomationPanel() {
@@ -11,6 +21,8 @@ export default function AutomationPanel() {
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [savedRules, setSavedRules] = useState<AutomationRule[]>([]);
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+  const [posts, setPosts] = useState<IgPost[]>([]);
+  const [postLoading, setPostLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,9 +56,29 @@ export default function AutomationPanel() {
 
   const activeLinks = useMemo(() => links.filter((l) => l.status === "active"), [links]);
 
+  const loadPosts = async (igAccount: AutomationRule["igAccount"]) => {
+    setPostLoading(true);
+    try {
+      const res = await fetch(`/api/automation/posts?igAccount=${igAccount}&limit=20`, { cache: "no-store" });
+      const json = await res.json();
+      const items: IgPost[] = Array.isArray(json?.items) ? json.items : [];
+      setPosts(items);
+    } finally {
+      setPostLoading(false);
+    }
+  };
+
   const upsertRule = (id: string, patch: Partial<AutomationRule>) => {
     setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: new Date().toISOString() } : r)));
   };
+
+  useEffect(() => {
+    if (!selectedRule) {
+      setPosts([]);
+      return;
+    }
+    loadPosts(selectedRule.igAccount);
+  }, [selectedRule?.id, selectedRule?.igAccount]);
 
   const addRule = () => {
     const created = emptyAutomationRule(nextId("rule"));
@@ -129,6 +161,30 @@ export default function AutomationPanel() {
               </select>
             </label>
             <label>게시물 media_id<input value={selectedRule.mediaId} onChange={(e) => upsertRule(selectedRule.id, { mediaId: e.target.value })} /></label>
+            <div className={styles.rowActions}>
+              <button type="button" onClick={() => loadPosts(selectedRule.igAccount)} className={styles.secondaryBtn}>최근 게시물 불러오기</button>
+            </div>
+            {postLoading ? <p className={styles.summaryHint}>게시물 불러오는 중...</p> : (
+              <div className={styles.groupLinks}>
+                <strong>게시물 선택</strong>
+                <div className={styles.blockList}>
+                  {posts.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`${styles.blockItem} ${selectedRule.mediaId === p.id ? styles.active : ""}`}
+                      onClick={() => upsertRule(selectedRule.id, { mediaId: p.id })}
+                    >
+                      <div className={styles.blockMain}>
+                        <span>{new Date(p.timestamp).toLocaleDateString()}</span>
+                        <span className={styles.statusPill}>{p.mediaType}</span>
+                      </div>
+                      <div className={styles.blockSub}>{p.caption ? p.caption.slice(0, 90) : "(캡션 없음)"}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <label>트리거
               <select value={selectedRule.triggerMode} onChange={(e) => upsertRule(selectedRule.id, { triggerMode: e.target.value as AutomationRule["triggerMode"] })}>
                 <option value="keyword">특정 키워드</option>

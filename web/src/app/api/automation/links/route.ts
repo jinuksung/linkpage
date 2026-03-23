@@ -13,7 +13,7 @@ type Row = {
   id: string;
   partner: string;
   affiliate_url: string;
-  status: "active" | "inactive";
+  health_status: "ok" | "expired" | "failed";
   is_current: boolean;
   generated_at: string;
   products_master: { name: string | null }[] | null;
@@ -24,7 +24,7 @@ const toItem = (r: Row) => ({
   igAccount: "hotbeaverdeals" as const,
   label: `${r.products_master?.[0]?.name ?? "(상품명 없음)"} · ${r.partner}`,
   url: r.affiliate_url,
-  status: r.status,
+  status: r.health_status === "ok" ? "active" : "inactive",
   updatedAt: r.generated_at,
 });
 
@@ -33,9 +33,9 @@ export async function GET() {
     const supabase = getClient();
     const { data, error } = await supabase
       .from("affiliate_links")
-      .select("id,partner,affiliate_url,status,is_current,generated_at,products_master(name)")
+      .select("id,partner,affiliate_url,health_status,is_current,generated_at,products_master(name)")
       .eq("is_current", true)
-      .eq("status", "active")
+      .eq("health_status", "ok")
       .order("generated_at", { ascending: false })
       .limit(300);
 
