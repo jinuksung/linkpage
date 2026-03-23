@@ -16,12 +16,20 @@
   height: 240px;
   overflow: hidden;
   background: var(--neutral-300);
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fadeUp 420ms ease-out 60ms forwards;
 }
 
 .heroSingle img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 220ms ease;
+}
+
+.heroSingle:hover img {
+  transform: scale(1.015);
 }
 
 .floatBtn {
@@ -37,6 +45,16 @@
   display: grid;
   place-items: center;
   color: #3f4752;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.floatBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
+}
+
+.floatBtn:active {
+  transform: scale(0.97);
 }
 
 .icon {
@@ -64,6 +82,9 @@
 .profileSection {
   text-align: center;
   padding: 18px 14px 10px;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fadeUp 420ms ease-out 140ms forwards;
 }
 
 .profileSection h1 {
@@ -95,6 +116,22 @@
   gap: 10px;
 }
 
+.listWrap .productCard:nth-child(1) {
+  animation-delay: 180ms;
+}
+.listWrap .productCard:nth-child(2) {
+  animation-delay: 240ms;
+}
+.listWrap .productCard:nth-child(3) {
+  animation-delay: 300ms;
+}
+.listWrap .productCard:nth-child(4) {
+  animation-delay: 360ms;
+}
+.listWrap .productCard:nth-child(n + 5) {
+  animation-delay: 420ms;
+}
+
 .productCard {
   position: relative;
   display: grid;
@@ -104,6 +141,19 @@
   border-radius: 12px;
   padding: 8px;
   border: 1px solid #eceff3;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fadeUp 420ms ease-out forwards;
+}
+
+.productCard:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 10px 20px rgba(62, 42, 31, 0.08);
+}
+
+.productCard:active {
+  transform: scale(0.985);
 }
 
 .productCardSmall {
@@ -189,6 +239,33 @@
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroSingle,
+  .profileSection,
+  .productCard {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .heroSingle img,
+  .floatBtn,
+  .productCard {
+    transition: none;
+  }
 }
 
 @media (min-width: 768px) {
