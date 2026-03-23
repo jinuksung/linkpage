@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "./page.module.css";
 import { initialBlocks, type Block, type SingleLinkBlock } from "../../lib/page-data";
 import { emptyProduct, type ProductMaster } from "../../lib/product-master";
+import AutomationPanel from "./automation-panel";
 
 type SaveState = "saved" | "dirty" | "saving" | "error";
-type AdminTab = "blocks" | "products";
+type AdminTab = "blocks" | "products" | "automation";
 
 
 const nextId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
@@ -662,6 +663,7 @@ export default function AdminPage() {
       <div className={styles.tabBar}>
         <button className={activeTab === "blocks" ? styles.tabActive : ""} onClick={() => setActiveTab("blocks")}>블록 편집</button>
         <button className={activeTab === "products" ? styles.tabActive : ""} onClick={() => setActiveTab("products")}>상품 마스터</button>
+        <button className={activeTab === "automation" ? styles.tabActive : ""} onClick={() => setActiveTab("automation")}>인스타 자동화</button>
       </div>
 
       {activeTab === "blocks" ? (
@@ -804,8 +806,10 @@ export default function AdminPage() {
             </div>
           </footer>
         </>
-      ) : (
+      ) : activeTab === "products" ? (
         productsView
+      ) : (
+        <AutomationPanel />
       )}
     </main>
   );
