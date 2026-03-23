@@ -2,16 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./page.module.css";
-import { emptyAffiliateLink, emptyAutomationRule, type AffiliateLink, type AutomationRule } from "../../lib/automation";
+import { emptyAutomationRule, type AffiliateLink, type AutomationRule } from "../../lib/automation";
 
 const nextId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
 
 export default function AutomationPanel() {
   const [links, setLinks] = useState<AffiliateLink[]>([]);
   const [rules, setRules] = useState<AutomationRule[]>([]);
-  const [savedLinks, setSavedLinks] = useState<AffiliateLink[]>([]);
   const [savedRules, setSavedRules] = useState<AutomationRule[]>([]);
-  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,9 +28,7 @@ export default function AutomationPanel() {
         const loadedRules: AutomationRule[] = Array.isArray(rulesJson?.items) ? rulesJson.items : [];
         setLinks(loadedLinks);
         setRules(loadedRules);
-        setSavedLinks(loadedLinks);
         setSavedRules(loadedRules);
-        setSelectedLinkId((prev) => prev ?? loadedLinks[0]?.id ?? null);
         setSelectedRuleId((prev) => prev ?? loadedRules[0]?.id ?? null);
       } finally {
         if (alive) setLoading(false);
@@ -44,50 +40,18 @@ export default function AutomationPanel() {
     };
   }, []);
 
-  const selectedLink = links.find((l) => l.id === selectedLinkId) ?? null;
   const selectedRule = rules.find((r) => r.id === selectedRuleId) ?? null;
 
-  const accountScopedLinks = useMemo(() => {
-    if (!selectedRule) return links;
-    return links.filter((l) => l.igAccount === selectedRule.igAccount && l.status === "active");
-  }, [links, selectedRule]);
-
-  const upsertLink = (id: string, patch: Partial<AffiliateLink>) => {
-    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch, updatedAt: new Date().toISOString() } : l)));
-  };
+  const activeLinks = useMemo(() => links.filter((l) => l.status === "active"), [links]);
 
   const upsertRule = (id: string, patch: Partial<AutomationRule>) => {
     setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: new Date().toISOString() } : r)));
-  };
-
-  const addLink = () => {
-    const created = emptyAffiliateLink(nextId("link"));
-    setLinks((prev) => [created, ...prev]);
-    setSelectedLinkId(created.id);
   };
 
   const addRule = () => {
     const created = emptyAutomationRule(nextId("rule"));
     setRules((prev) => [created, ...prev]);
     setSelectedRuleId(created.id);
-  };
-
-  const saveLink = async (id: string) => {
-    const target = links.find((l) => l.id === id);
-    if (!target) return;
-    const exists = savedLinks.some((l) => l.id === id);
-
-    const res = await fetch(exists ? `/api/automation/links/${id}` : "/api/automation/links", {
-      method: exists ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(target),
-    });
-    if (!res.ok) return;
-
-    const json = await res.json();
-    const saved = json.item as AffiliateLink;
-    setLinks((prev) => prev.map((l) => (l.id === id ? saved : l)));
-    setSavedLinks((prev) => (prev.some((l) => l.id === saved.id) ? prev.map((l) => (l.id === saved.id ? saved : l)) : [saved, ...prev]));
   };
 
   const saveRule = async (id: string) => {
@@ -113,15 +77,6 @@ export default function AutomationPanel() {
     setSavedRules((prev) => (prev.some((r) => r.id === saved.id) ? prev.map((r) => (r.id === saved.id ? saved : r)) : [saved, ...prev]));
   };
 
-  const deleteLink = async (id: string) => {
-    if (savedLinks.some((l) => l.id === id)) {
-      await fetch(`/api/automation/links/${id}`, { method: "DELETE" });
-    }
-    setLinks((prev) => prev.filter((l) => l.id !== id));
-    setSavedLinks((prev) => prev.filter((l) => l.id !== id));
-    if (selectedLinkId === id) setSelectedLinkId(null);
-  };
-
   const deleteRule = async (id: string) => {
     if (savedRules.some((r) => r.id === id)) {
       await fetch(`/api/automation/rules/${id}`, { method: "DELETE" });
@@ -134,46 +89,18 @@ export default function AutomationPanel() {
   return (
     <div className={styles.productsGrid}>
       <div className={styles.panel}>
-        <div className={styles.panelHead}>
-          <h3>제휴 링크</h3>
-          <button className={styles.secondaryBtn} onClick={addLink}>+ 링크 추가</button>
-        </div>
+        <div className={styles.panelHead}><h3>DM 링크 후보 (affiliate_links 현재값)</h3></div>
+        <p className={styles.summaryHint}>여긴 읽기 전용. 상품 링크 갱신은 기존 affiliate_links 파이프라인을 사용.</p>
         {loading ? <p>불러오는 중...</p> : (
           <ul className={styles.blockList}>
-            {links.map((l) => (
-              <li key={l.id} className={`${styles.blockItem} ${selectedLinkId === l.id ? styles.active : ""}`} onClick={() => setSelectedLinkId(l.id)}>
-                <div className={styles.blockMain}><strong>{l.label || "(이름 없음)"}</strong><span className={styles.statusPill}>{l.igAccount}</span></div>
+            {activeLinks.map((l) => (
+              <li key={l.id} className={styles.blockItem}>
+                <div className={styles.blockMain}><strong>{l.label || "(이름 없음)"}</strong></div>
                 <div className={styles.blockSub}>{l.url}</div>
               </li>
             ))}
           </ul>
         )}
-      </div>
-
-      <div className={styles.panel}>
-        <div className={styles.panelHead}><h3>링크 편집</h3></div>
-        {selectedLink ? (
-          <div className={styles.formGrid}>
-            <label>계정
-              <select value={selectedLink.igAccount} onChange={(e) => upsertLink(selectedLink.id, { igAccount: e.target.value as AffiliateLink["igAccount"] })}>
-                <option value="hotbeaverdeals">hotbeaverdeals</option>
-                <option value="hotorideals">hotorideals</option>
-              </select>
-            </label>
-            <label>라벨<input value={selectedLink.label} onChange={(e) => upsertLink(selectedLink.id, { label: e.target.value })} /></label>
-            <label>URL<input value={selectedLink.url} onChange={(e) => upsertLink(selectedLink.id, { url: e.target.value })} /></label>
-            <label>상태
-              <select value={selectedLink.status} onChange={(e) => upsertLink(selectedLink.id, { status: e.target.value as AffiliateLink["status"] })}>
-                <option value="active">active</option>
-                <option value="inactive">inactive</option>
-              </select>
-            </label>
-            <div className={styles.rowActions}>
-              <button className={styles.productSaveBtn} onClick={() => saveLink(selectedLink.id)}>링크 저장</button>
-              <button className={styles.dangerBtn} onClick={() => deleteLink(selectedLink.id)}>삭제</button>
-            </div>
-          </div>
-        ) : <p>왼쪽에서 링크를 선택해줘.</p>}
       </div>
 
       <div className={styles.panel}>
@@ -189,9 +116,12 @@ export default function AutomationPanel() {
             </li>
           ))}
         </ul>
+      </div>
 
+      <div className={styles.panel}>
+        <div className={styles.panelHead}><h3>룰 편집</h3></div>
         {selectedRule ? (
-          <div className={styles.formGrid} style={{ marginTop: 12 }}>
+          <div className={styles.formGrid}>
             <label>계정
               <select value={selectedRule.igAccount} onChange={(e) => upsertRule(selectedRule.id, { igAccount: e.target.value as AutomationRule["igAccount"] })}>
                 <option value="hotbeaverdeals">hotbeaverdeals</option>
@@ -214,7 +144,7 @@ export default function AutomationPanel() {
             <label>제휴링크 선택
               <select value={selectedRule.affiliateLinkId} onChange={(e) => upsertRule(selectedRule.id, { affiliateLinkId: e.target.value })}>
                 <option value="">선택</option>
-                {accountScopedLinks.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+                {activeLinks.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
               </select>
             </label>
             <label>대댓글 문구 1
@@ -237,7 +167,7 @@ export default function AutomationPanel() {
               <button className={styles.dangerBtn} onClick={() => deleteRule(selectedRule.id)}>삭제</button>
             </div>
           </div>
-        ) : null}
+        ) : <p>룰을 선택해줘.</p>}
       </div>
     </div>
   );
