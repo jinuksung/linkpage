@@ -2,9 +2,17 @@ import { NextResponse } from "next/server";
 
 type IgAccount = "hotbeaverdeals" | "hotorideals";
 
-const accountToUserId = (account: IgAccount) => {
-  if (account === "hotbeaverdeals") return process.env.IG_HOTBEAVER_USER_ID;
-  return process.env.IG_HOTORI_USER_ID;
+const accountConfig = (account: IgAccount) => {
+  if (account === "hotbeaverdeals") {
+    return {
+      userId: process.env.IG_HOTBEAVER_USER_ID,
+      accessToken: process.env.IG_HOTBEAVER_ACCESS_TOKEN,
+    };
+  }
+  return {
+    userId: process.env.IG_HOTORI_USER_ID,
+    accessToken: process.env.IG_HOTORI_ACCESS_TOKEN,
+  };
 };
 
 export async function GET(req: Request) {
@@ -17,15 +25,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "invalid igAccount" }, { status: 400 });
     }
 
-    const userId = accountToUserId(igAccount);
-    const accessToken = process.env.IG_GRAPH_ACCESS_TOKEN;
+    const { userId, accessToken } = accountConfig(igAccount);
 
     if (!userId) {
       return NextResponse.json({ error: `Missing IG user id env for ${igAccount}` }, { status: 500 });
     }
 
     if (!accessToken) {
-      return NextResponse.json({ error: "Missing IG_GRAPH_ACCESS_TOKEN" }, { status: 500 });
+      return NextResponse.json({ error: `Missing access token env for ${igAccount}` }, { status: 500 });
     }
 
     const fields = ["id", "caption", "media_type", "media_url", "thumbnail_url", "permalink", "timestamp"].join(",");
