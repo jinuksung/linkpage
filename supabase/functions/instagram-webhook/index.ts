@@ -14,6 +14,13 @@ const KEYWORD_REGEX = new RegExp(
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+type RuleRow = {
+  id: string;
+  trigger_mode: "keyword" | "any";
+  keyword_regex: string | null;
+  reply_variants: string[] | null;
+};
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -36,6 +43,54 @@ async function logWebhook(stage: string, payload: unknown, error?: string) {
     });
   } catch {
     // ignore
+  }
+}
+
+async function pickRuleReply(mediaId: string | null, text: string): Promise<{ replyText: string; ruleId?: string }> {
+  if (!mediaId || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return { replyText: AUTO_REPLY_TEXT };
+  }
+
+  try {
+    const url = new URL(`${SUPABASE_URL}/rest/v1/ig_automation_rules`);
+    url.searchParams.set("select", "id,trigger_mode,keyword_regex,reply_variants");
+    url.searchParams.set("media_id", `eq.${mediaId}`);
+    url.searchParams.set("status", "eq.active");
+    url.searchParams.set("limit", "20");
+
+    const res = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    });
+
+    const rows = (await res.json().catch(() => [])) as RuleRow[];
+    if (!Array.isArray(rows) || !rows.length) return { replyText: AUTO_REPLY_TEXT };
+
+    const matched = rows.find((r) => {
+      if (r.trigger_mode === "any") return true;
+      const pattern = String(r.keyword_regex ?? "").trim();
+      if (!pattern) return false;
+      try {
+        return new RegExp(pattern, "i").test(text);
+      } catch {
+        return false;
+      }
+    });
+
+    if (!matched) return { replyText: AUTO_REPLY_TEXT };
+
+    const variants = Array.isArray(matched.reply_variants)
+      ? matched.reply_variants.map((v) => String(v ?? "").trim()).filter(Boolean)
+      : [];
+
+    if (!variants.length) return { replyText: AUTO_REPLY_TEXT, ruleId: matched.id };
+
+    const replyText = variants[Math.floor(Math.random() * variants.length)];
+    return { replyText, ruleId: matched.id };
+  } catch {
+    return { replyText: AUTO_REPLY_TEXT };
   }
 }
 
@@ -125,10 +180,12 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        const { replyText, ruleId } = await pickRuleReply(mediaId, text);
+
         try {
-          await replyComment(mediaId, commentId, AUTO_REPLY_TEXT);
-          await logWebhook("replied", { commentId, mediaId, fromUserId, text, replyText: AUTO_REPLY_TEXT });
-          processed.push({ commentId, mediaId, fromUserId, action: "replied" });
+          await replyComment(mediaId, commentId, replyText);
+          await logWebhook("replied", { commentId, mediaId, fromUserId, text, ruleId: ruleId ?? null, replyText });
+          processed.push({ commentId, mediaId, fromUserId, ruleId: ruleId ?? null, action: "replied" });
         } catch (e) {
           const err = String(e);
           await logWebhook("delivery_error", { commentId, mediaId, fromUserId, text }, err);
