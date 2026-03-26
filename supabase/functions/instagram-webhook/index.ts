@@ -120,6 +120,7 @@ Deno.serve(async (req) => {
 
         try {
           await replyComment(mediaId, commentId, AUTO_REPLY_TEXT);
+          await logWebhook("replied", { commentId, mediaId, fromUserId, text, replyText: AUTO_REPLY_TEXT });
           processed.push({ commentId, mediaId, fromUserId, action: "replied" });
         } catch (e) {
           const err = String(e);
