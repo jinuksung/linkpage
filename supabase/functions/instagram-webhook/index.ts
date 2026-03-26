@@ -13,6 +13,7 @@ const KEYWORD_REGEX = new RegExp(
   Deno.env.get("IG_KEYWORD_REGEX") ?? "(링크|정보|가격|구매)",
   "i",
 );
+const DEBUG = (Deno.env.get("IG_WEBHOOK_DEBUG") ?? "false") === "true";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -52,19 +53,25 @@ async function sendDm(igScopedUserId: string, text: string) {
   });
 }
 
+async function sendPrivateReply(commentId: string, text: string) {
+  // POST /{comment-id}/private_replies
+  return graphPost(`${commentId}/private_replies`, { message: text });
+}
+
 function extractCommentEvent(change: any): {
   commentId: string;
   fromUserId: string;
   text: string;
 } | null {
-  // Payload shape can vary by subscription.
-  // This parser supports common fields and safely no-ops otherwise.
   const value = change?.value;
   if (!value) return null;
 
-  const commentId = String(value?.id ?? "").trim();
-  const fromUserId = String(value?.from?.id ?? "").trim();
-  const text = String(value?.text ?? "").trim();
+  const field = String(change?.field ?? "");
+  if (field && !["comments", "mentions", "messages"].includes(field)) return null;
+
+  const commentId = String(value?.id ?? value?.comment_id ?? "").trim();
+  const fromUserId = String(value?.from?.id ?? value?.sender?.id ?? "").trim();
+  const text = String(value?.text ?? value?.message ?? "").trim();
 
   if (!commentId || !fromUserId) return null;
   return { commentId, fromUserId, text };
@@ -99,6 +106,10 @@ Deno.serve(async (req) => {
     const entries = Array.isArray(body?.entry) ? body.entry : [];
     const processed: Array<Record<string, unknown>> = [];
 
+    if (DEBUG) {
+      console.log("[instagram-webhook] body", JSON.stringify(body));
+    }
+
     // Guardrails
     if (!GRAPH_ACCESS_TOKEN) {
       return json({ ok: false, error: "missing IG_GRAPH_ACCESS_TOKEN" }, 500);
@@ -112,18 +123,35 @@ Deno.serve(async (req) => {
 
         const { commentId, fromUserId, text } = parsed;
 
-        // Simple keyword gate. Replace with DB-driven rule if needed.
         const matched = KEYWORD_REGEX.test(text);
         if (!matched) {
-          processed.push({ commentId, action: "skip", reason: "keyword-not-matched" });
+          processed.push({ commentId, action: "skip", reason: "keyword-not-matched", text });
           continue;
         }
 
-        // TODO: add dedupe/cooldown check (Supabase table) before sending.
-        await replyComment(commentId, AUTO_REPLY_TEXT);
-        await sendDm(fromUserId, AUTO_DM_TEXT);
+        const errors: string[] = [];
 
-        processed.push({ commentId, fromUserId, action: "replied+dm" });
+        try {
+          await replyComment(commentId, AUTO_REPLY_TEXT);
+        } catch (e) {
+          errors.push(`reply:${String(e)}`);
+        }
+
+        try {
+          await sendPrivateReply(commentId, AUTO_DM_TEXT);
+        } catch (e) {
+          errors.push(`private_reply:${String(e)}`);
+        }
+
+        if (!errors.length) {
+          try {
+            await sendDm(fromUserId, AUTO_DM_TEXT);
+          } catch (e) {
+            errors.push(`dm:${String(e)}`);
+          }
+        }
+
+        processed.push({ commentId, fromUserId, action: errors.length ? "attempted-with-errors" : "replied+dm", errors });
       }
     }
 
