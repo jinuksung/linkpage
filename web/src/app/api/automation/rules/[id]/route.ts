@@ -17,6 +17,7 @@ type Row = {
   keyword_regex: string | null;
   dm_template: string;
   dm_button_text: string | null;
+  dm_button_url: string | null;
   affiliate_link_id: string;
   reply_variants: string[] | null;
   status: "active" | "inactive";
@@ -31,6 +32,7 @@ const toItem = (r: Row) => ({
   keywordRegex: r.keyword_regex ?? "",
   dmTemplate: r.dm_template ?? "",
   dmButtonText: r.dm_button_text ?? "",
+  dmButtonUrl: r.dm_button_url ?? "",
   affiliateLinkId: r.affiliate_link_id,
   replyVariants: Array.isArray(r.reply_variants) ? r.reply_variants : [],
   status: r.status,
@@ -58,12 +60,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         keyword_regex: body.triggerMode === "any" ? null : (body.keywordRegex?.trim() || null),
         dm_template: body.dmTemplate?.trim() || "",
         dm_button_text: body.dmButtonText?.trim() || null,
+        dm_button_url: body.dmButtonUrl?.trim() || null,
         affiliate_link_id: body.affiliateLinkId,
         reply_variants: sanitizeVariants(body.replyVariants),
         status: body.status === "inactive" ? "inactive" : "active",
       })
       .eq("id", id)
-      .select("id,ig_account,media_id,trigger_mode,keyword_regex,dm_template,dm_button_text,affiliate_link_id,reply_variants,status,updated_at")
+      .select("id,ig_account,media_id,trigger_mode,keyword_regex,dm_template,dm_button_text,dm_button_url,affiliate_link_id,reply_variants,status,updated_at")
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -19,6 +19,7 @@ export type AutomationRule = {
   keywordRegex: string;
   dmTemplate: string;
   dmButtonText: string;
+  dmButtonUrl: string;
   affiliateLinkId: string;
   replyVariants: string[];
   status: "active" | "inactive";
@@ -42,6 +43,7 @@ export const emptyAutomationRule = (id: string): AutomationRule => ({
   keywordRegex: "",
   dmTemplate: "문의 주셔서 감사합니다! {{link}}",
   dmButtonText: "지금 보러가기",
+  dmButtonUrl: "",
   affiliateLinkId: "",
   replyVariants: ["확인했어요! DM 보냈습니다 🙌"],
   status: "active",

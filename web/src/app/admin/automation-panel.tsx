@@ -247,7 +247,10 @@ export default function AutomationPanel() {
             </label>
             <label>DM 버튼 문구
               <input value={selectedRule.dmButtonText ?? ""} onChange={(e) => upsertRule(selectedRule.id, { dmButtonText: e.target.value })} placeholder="지금 보러가기" />
-              <span className={styles.summaryHint}>버튼 클릭 시 선택한 제휴 링크로 이동</span>
+            </label>
+            <label>DM 버튼 URL (수기입력)
+              <input value={selectedRule.dmButtonUrl ?? ""} onChange={(e) => upsertRule(selectedRule.id, { dmButtonUrl: e.target.value })} placeholder="https://example.com" />
+              <span className={styles.summaryHint}>입력 시 수기 URL 우선, 비어있으면 선택한 제휴 링크 사용</span>
             </label>
             <label>제휴링크 선택
               <select value={selectedRule.affiliateLinkId} onChange={(e) => upsertRule(selectedRule.id, { affiliateLinkId: e.target.value })}>
