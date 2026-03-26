@@ -13,6 +13,14 @@ const KEYWORD_REGEX = new RegExp(
 );
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const IG_USER_ID_HOTORIDEALS = Deno.env.get("IG_USER_ID_HOTORIDEALS") ?? "";
+const IG_USER_ID_HOTBEAVERDEALS = Deno.env.get("IG_USER_ID_HOTBEAVERDEALS") ?? "";
+
+function resolveIgUserId(entryAccountId: string): string {
+  if (entryAccountId === IG_USER_ID_HOTORIDEALS) return IG_USER_ID_HOTORIDEALS;
+  if (entryAccountId === IG_USER_ID_HOTBEAVERDEALS) return IG_USER_ID_HOTBEAVERDEALS;
+  return IG_USER_ID_HOTORIDEALS;
+}
 
 type RuleRow = {
   id: string;
@@ -75,16 +83,17 @@ async function claimCommentForReply(commentId: string, mediaId: string | null, r
   }
 }
 
-async function sendDm(igScopedUserId: string, text: string) {
-  return graphPost("me/messages", {
+async function sendDm(igUserId: string, igScopedUserId: string, text: string) {
+  return graphPost(`${igUserId}/messages`, {
     recipient: JSON.stringify({ id: igScopedUserId }),
     message: JSON.stringify({ text }),
-    messaging_type: "RESPONSE",
+    messaging_type: "MESSAGE_TAG",
+    tag: "HUMAN_AGENT",
   });
 }
 
-async function sendDmWithButton(igScopedUserId: string, text: string, buttonText: string, buttonUrl: string) {
-  return graphPost("me/messages", {
+async function sendDmWithButton(igUserId: string, igScopedUserId: string, text: string, buttonText: string, buttonUrl: string) {
+  return graphPost(`${igUserId}/messages`, {
     recipient: JSON.stringify({ id: igScopedUserId }),
     message: JSON.stringify({
       attachment: {
@@ -102,7 +111,8 @@ async function sendDmWithButton(igScopedUserId: string, text: string, buttonText
         },
       },
     }),
-    messaging_type: "RESPONSE",
+    messaging_type: "MESSAGE_TAG",
+    tag: "HUMAN_AGENT",
   });
 }
 
@@ -240,6 +250,7 @@ Deno.serve(async (req) => {
 
     for (const entry of entries) {
       const entryAccountId = String(entry?.id ?? "").trim();
+      const igUserId = resolveIgUserId(entryAccountId);
       const changes = Array.isArray(entry?.changes) ? entry.changes : [];
 
       for (const change of changes) {
@@ -286,12 +297,12 @@ Deno.serve(async (req) => {
               try {
                 if (link) {
                   try {
-                    await sendDmWithButton(fromUserId, dmText, buttonText, link);
+                    await sendDmWithButton(igUserId, fromUserId, dmText, buttonText, link);
                   } catch {
-                    await sendDm(fromUserId, dmText);
+                    await sendDm(igUserId, fromUserId, dmText);
                   }
                 } else {
-                  await sendDm(fromUserId, dmText);
+                  await sendDm(igUserId, fromUserId, dmText);
                 }
               } catch (dmErr) {
                 await logWebhook("delivery_error", { commentId, mediaId, fromUserId, step: "dm", ruleId: rule.id }, String(dmErr));
