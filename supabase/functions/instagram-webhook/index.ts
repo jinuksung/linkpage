@@ -19,6 +19,10 @@ type RuleRow = {
   trigger_mode: "keyword" | "any";
   keyword_regex: string | null;
   reply_variants: string[] | null;
+  dm_template: string | null;
+  dm_button_link_mode: "affiliate" | "manual" | null;
+  dm_button_url: string | null;
+  affiliate_link_id: string | null;
 };
 
 function json(data: unknown, status = 200) {
@@ -70,14 +74,44 @@ async function claimCommentForReply(commentId: string, mediaId: string | null, r
   }
 }
 
-async function pickRuleReply(mediaId: string | null, text: string): Promise<{ replyText: string; ruleId?: string }> {
+async function sendDm(igScopedUserId: string, text: string) {
+  return graphPost("me/messages", {
+    recipient: JSON.stringify({ id: igScopedUserId }),
+    message: JSON.stringify({ text }),
+    messaging_type: "RESPONSE",
+  });
+}
+
+async function resolveAffiliateUrl(affiliateLinkId: string | null): Promise<string | null> {
+  if (!affiliateLinkId || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+  try {
+    const url = new URL(`${SUPABASE_URL}/rest/v1/affiliate_links`);
+    url.searchParams.set("select", "url");
+    url.searchParams.set("id", `eq.${affiliateLinkId}`);
+    url.searchParams.set("limit", "1");
+    const res = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    });
+    const rows = await res.json().catch(() => []);
+    if (!Array.isArray(rows) || !rows.length) return null;
+    const found = String(rows[0]?.url ?? "").trim();
+    return found || null;
+  } catch {
+    return null;
+  }
+}
+
+async function pickRuleReply(mediaId: string | null, text: string): Promise<{ replyText: string; rule?: RuleRow }> {
   if (!mediaId || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return { replyText: AUTO_REPLY_TEXT };
   }
 
   try {
     const url = new URL(`${SUPABASE_URL}/rest/v1/ig_automation_rules`);
-    url.searchParams.set("select", "id,trigger_mode,keyword_regex,reply_variants");
+    url.searchParams.set("select", "id,trigger_mode,keyword_regex,reply_variants,dm_template,dm_button_link_mode,dm_button_url,affiliate_link_id");
     url.searchParams.set("media_id", `eq.${mediaId}`);
     url.searchParams.set("status", "eq.active");
     url.searchParams.set("limit", "20");
@@ -109,10 +143,10 @@ async function pickRuleReply(mediaId: string | null, text: string): Promise<{ re
       ? matched.reply_variants.map((v) => String(v ?? "").trim()).filter(Boolean)
       : [];
 
-    if (!variants.length) return { replyText: AUTO_REPLY_TEXT, ruleId: matched.id };
+    if (!variants.length) return { replyText: AUTO_REPLY_TEXT, rule: matched };
 
     const replyText = variants[Math.floor(Math.random() * variants.length)];
-    return { replyText, ruleId: matched.id };
+    return { replyText, rule: matched };
   } catch {
     return { replyText: AUTO_REPLY_TEXT };
   }
@@ -204,8 +238,8 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const { replyText, ruleId } = await pickRuleReply(mediaId, text);
-        const claimed = await claimCommentForReply(commentId, mediaId, ruleId);
+        const { replyText, rule } = await pickRuleReply(mediaId, text);
+        const claimed = await claimCommentForReply(commentId, mediaId, rule?.id);
         if (!claimed) {
           processed.push({ commentId, action: "skip", reason: "duplicate-comment" });
           continue;
@@ -213,8 +247,27 @@ Deno.serve(async (req) => {
 
         try {
           await replyComment(mediaId, commentId, replyText);
-          await logWebhook("replied", { commentId, mediaId, fromUserId, text, ruleId: ruleId ?? null, replyText });
-          processed.push({ commentId, mediaId, fromUserId, ruleId: ruleId ?? null, action: "replied" });
+
+          if (rule) {
+            const link = rule.dm_button_link_mode === "manual"
+              ? String(rule.dm_button_url ?? "").trim() || null
+              : await resolveAffiliateUrl(rule.affiliate_link_id ?? null);
+            const dmTemplate = String(rule.dm_template ?? "").trim();
+            const dmText = (dmTemplate || "문의 주셔서 감사합니다! {{link}}")
+              .replaceAll("{{link}}", link ?? "")
+              .trim();
+
+            if (dmText) {
+              try {
+                await sendDm(fromUserId, dmText);
+              } catch (dmErr) {
+                await logWebhook("delivery_error", { commentId, mediaId, fromUserId, step: "dm", ruleId: rule.id }, String(dmErr));
+              }
+            }
+          }
+
+          await logWebhook("replied", { commentId, mediaId, fromUserId, text, ruleId: rule?.id ?? null, replyText });
+          processed.push({ commentId, mediaId, fromUserId, ruleId: rule?.id ?? null, action: "replied" });
         } catch (e) {
           const err = String(e);
           await logWebhook("delivery_error", { commentId, mediaId, fromUserId, text }, err);
