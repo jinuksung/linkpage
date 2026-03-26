@@ -21,6 +21,7 @@ type RuleRow = {
   reply_variants: string[] | null;
   dm_template: string | null;
   dm_button_link_mode: "affiliate" | "manual" | null;
+  dm_button_text: string | null;
   dm_button_url: string | null;
   affiliate_link_id: string | null;
 };
@@ -82,6 +83,29 @@ async function sendDm(igScopedUserId: string, text: string) {
   });
 }
 
+async function sendDmWithButton(igScopedUserId: string, text: string, buttonText: string, buttonUrl: string) {
+  return graphPost("me/messages", {
+    recipient: JSON.stringify({ id: igScopedUserId }),
+    message: JSON.stringify({
+      attachment: {
+        type: "template",
+        payload: {
+          template_type: "button",
+          text,
+          buttons: [
+            {
+              type: "web_url",
+              url: buttonUrl,
+              title: buttonText,
+            },
+          ],
+        },
+      },
+    }),
+    messaging_type: "RESPONSE",
+  });
+}
+
 async function resolveAffiliateUrl(affiliateLinkId: string | null): Promise<string | null> {
   if (!affiliateLinkId || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
   try {
@@ -111,7 +135,7 @@ async function pickRuleReply(mediaId: string | null, text: string): Promise<{ re
 
   try {
     const url = new URL(`${SUPABASE_URL}/rest/v1/ig_automation_rules`);
-    url.searchParams.set("select", "id,trigger_mode,keyword_regex,reply_variants,dm_template,dm_button_link_mode,dm_button_url,affiliate_link_id");
+    url.searchParams.set("select", "id,trigger_mode,keyword_regex,reply_variants,dm_template,dm_button_link_mode,dm_button_text,dm_button_url,affiliate_link_id");
     url.searchParams.set("media_id", `eq.${mediaId}`);
     url.searchParams.set("status", "eq.active");
     url.searchParams.set("limit", "20");
@@ -256,10 +280,19 @@ Deno.serve(async (req) => {
             const dmText = (dmTemplate || "문의 주셔서 감사합니다! {{link}}")
               .replaceAll("{{link}}", link ?? "")
               .trim();
+            const buttonText = String((rule as any).dm_button_text ?? "").trim() || "링크 보기";
 
             if (dmText) {
               try {
-                await sendDm(fromUserId, dmText);
+                if (link) {
+                  try {
+                    await sendDmWithButton(fromUserId, dmText, buttonText, link);
+                  } catch {
+                    await sendDm(fromUserId, dmText);
+                  }
+                } else {
+                  await sendDm(fromUserId, dmText);
+                }
               } catch (dmErr) {
                 await logWebhook("delivery_error", { commentId, mediaId, fromUserId, step: "dm", ruleId: rule.id }, String(dmErr));
               }
