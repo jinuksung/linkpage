@@ -23,6 +23,7 @@ export default function AutomationPanel() {
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [posts, setPosts] = useState<IgPost[]>([]);
   const [postLoading, setPostLoading] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,11 +59,23 @@ export default function AutomationPanel() {
 
   const loadPosts = async (igAccount: AutomationRule["igAccount"]) => {
     setPostLoading(true);
+    setPostError(null);
     try {
       const res = await fetch(`/api/automation/posts?igAccount=${igAccount}&limit=20`, { cache: "no-store" });
       const json = await res.json();
+      if (!res.ok) {
+        setPosts([]);
+        setPostError(String(json?.error ?? "게시물 조회 실패"));
+        return;
+      }
       const items: IgPost[] = Array.isArray(json?.items) ? json.items : [];
       setPosts(items);
+      if (!items.length) {
+        setPostError("게시물이 없거나 접근 권한이 없습니다.");
+      }
+    } catch (e) {
+      setPosts([]);
+      setPostError(e instanceof Error ? e.message : "게시물 조회 실패");
     } finally {
       setPostLoading(false);
     }
@@ -167,6 +180,7 @@ export default function AutomationPanel() {
             {postLoading ? <p className={styles.summaryHint}>게시물 불러오는 중...</p> : (
               <div className={styles.groupLinks}>
                 <strong>게시물 선택</strong>
+                {postError ? <p className={styles.errorBadge}>{postError}</p> : null}
                 <div className={styles.blockList}>
                   {posts.map((p) => (
                     <button

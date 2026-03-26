@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     "defining-sending-frozen-favour.trycloudflare.com",
     "calcium-underwear-interventions-stylus.trycloudflare.com",
     "fantastic-carolina-quarter-alive.trycloudflare.com",
+    "wine-reliance-newly-knowledge.trycloudflare.com",
   ],
 };
 
