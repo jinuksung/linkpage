@@ -16,6 +16,25 @@ type IgPost = {
 
 const nextId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
 
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const keywordCsvToRegex = (value: string) => {
+  const parts = value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .slice(0, 10)
+    .map(escapeRegex);
+  return parts.join("|");
+};
+
+const regexToKeywordCsv = (value: string) =>
+  value
+    .split("|")
+    .map((v) => v.replace(/\\([.*+?^${}()|[\]\\])/g, "$1").trim())
+    .filter(Boolean)
+    .join(", ");
+
 export default function AutomationPanel() {
   const [links, setLinks] = useState<AffiliateLink[]>([]);
   const [rules, setRules] = useState<AutomationRule[]>([]);
@@ -206,10 +225,26 @@ export default function AutomationPanel() {
               </select>
             </label>
             {selectedRule.triggerMode === "keyword" ? (
-              <label>키워드 정규식<input value={selectedRule.keywordRegex} onChange={(e) => upsertRule(selectedRule.id, { keywordRegex: e.target.value })} placeholder="링크|정보|가격" /></label>
+              <>
+                <label>자동 DM 키워드(쉼표 구분)
+                  <input
+                    value={regexToKeywordCsv(selectedRule.keywordRegex)}
+                    onChange={(e) => upsertRule(selectedRule.id, { keywordRegex: keywordCsvToRegex(e.target.value) })}
+                    placeholder="링크, 정보, 가격"
+                  />
+                </label>
+                <label>키워드 정규식(고급)
+                  <input
+                    value={selectedRule.keywordRegex}
+                    onChange={(e) => upsertRule(selectedRule.id, { keywordRegex: e.target.value })}
+                    placeholder="링크|정보|가격"
+                  />
+                </label>
+              </>
             ) : null}
             <label>DM 문구
               <textarea value={selectedRule.dmTemplate} onChange={(e) => upsertRule(selectedRule.id, { dmTemplate: e.target.value })} placeholder="{{link}} 토큰 사용 가능" />
+              <span className={styles.summaryHint}>현재는 텍스트 링크만 지원 (버튼형 링크는 추후 추가 예정)</span>
             </label>
             <label>제휴링크 선택
               <select value={selectedRule.affiliateLinkId} onChange={(e) => upsertRule(selectedRule.id, { affiliateLinkId: e.target.value })}>
