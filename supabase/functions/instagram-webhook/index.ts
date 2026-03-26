@@ -21,10 +21,16 @@ function json(data: unknown, status = 200) {
 
 async function graphPost(path: string, body: Record<string, unknown>) {
   const url = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${path}`);
+  const form = new URLSearchParams();
+  for (const [k, v] of Object.entries(body)) {
+    form.set(k, String(v ?? ""));
+  }
+  form.set("access_token", GRAPH_ACCESS_TOKEN);
+
   const res = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...body, access_token: GRAPH_ACCESS_TOKEN }),
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: form.toString(),
   });
 
   const payload = await res.json().catch(() => ({}));
