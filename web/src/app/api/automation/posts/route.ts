@@ -1,17 +1,52 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 type IgAccount = "hotbeaverdeals" | "hotorideals";
 
-const accountConfig = (account: IgAccount) => {
-  if (account === "hotbeaverdeals") {
+type MediaRow = {
+  id?: string | number;
+  caption?: string;
+  media_type?: string;
+  media_url?: string;
+  thumbnail_url?: string;
+  permalink?: string;
+  timestamp?: string;
+};
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const getClient = () => {
+  if (!supabaseUrl || !serviceRoleKey) throw new Error("Missing SUPABASE env");
+  return createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+};
+
+const accountConfig = async (account: IgAccount) => {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from("ig_tokens")
+    .select("ig_user_id,access_token")
+    .eq("ig_account", account)
+    .single();
+
+  if (!error && data) {
     return {
-      userId: process.env.IG_HOTBEAVER_USER_ID,
-      accessToken: process.env.IG_HOTBEAVER_ACCESS_TOKEN,
+      userId: String(data.ig_user_id ?? "").trim(),
+      accessToken: String(data.access_token ?? "").trim(),
     };
   }
+
+  // Temporary fallback for environments that have not applied the migration yet.
+  if (account === "hotbeaverdeals") {
+    return {
+      userId: String(process.env.IG_HOTBEAVER_USER_ID ?? "").trim(),
+      accessToken: String(process.env.IG_HOTBEAVER_ACCESS_TOKEN ?? "").trim(),
+    };
+  }
+
   return {
-    userId: process.env.IG_HOTORI_USER_ID,
-    accessToken: process.env.IG_HOTORI_ACCESS_TOKEN,
+    userId: String(process.env.IG_HOTORI_USER_ID ?? "").trim(),
+    accessToken: String(process.env.IG_HOTORI_ACCESS_TOKEN ?? "").trim(),
   };
 };
 
@@ -25,14 +60,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "invalid igAccount" }, { status: 400 });
     }
 
-    const { userId, accessToken } = accountConfig(igAccount);
+    const { userId, accessToken } = await accountConfig(igAccount);
 
     if (!userId) {
-      return NextResponse.json({ error: `Missing IG user id env for ${igAccount}` }, { status: 500 });
+      return NextResponse.json({ error: `Missing IG user id in ig_tokens for ${igAccount}` }, { status: 500 });
     }
 
     if (!accessToken) {
-      return NextResponse.json({ error: `Missing access token env for ${igAccount}` }, { status: 500 });
+      return NextResponse.json({ error: `Missing access token in ig_tokens for ${igAccount}` }, { status: 500 });
     }
 
     const fields = ["id", "caption", "media_type", "media_url", "thumbnail_url", "permalink", "timestamp"].join(",");
@@ -49,7 +84,7 @@ export async function GET(req: Request) {
     }
 
     const items = Array.isArray(json?.data)
-      ? json.data.map((m: any) => ({
+      ? (json.data as MediaRow[]).map((m) => ({
           id: String(m.id ?? ""),
           caption: String(m.caption ?? ""),
           mediaType: String(m.media_type ?? ""),
