@@ -244,7 +244,10 @@ export default function AutomationPanel() {
             ) : null}
             <label>DM 문구
               <textarea value={selectedRule.dmTemplate} onChange={(e) => upsertRule(selectedRule.id, { dmTemplate: e.target.value })} placeholder="{{link}} 토큰 사용 가능" />
-              <span className={styles.summaryHint}>현재는 텍스트 링크만 지원 (버튼형 링크는 추후 추가 예정)</span>
+            </label>
+            <label>DM 버튼 문구
+              <input value={selectedRule.dmButtonText ?? ""} onChange={(e) => upsertRule(selectedRule.id, { dmButtonText: e.target.value })} placeholder="지금 보러가기" />
+              <span className={styles.summaryHint}>버튼 클릭 시 선택한 제휴 링크로 이동</span>
             </label>
             <label>제휴링크 선택
               <select value={selectedRule.affiliateLinkId} onChange={(e) => upsertRule(selectedRule.id, { affiliateLinkId: e.target.value })}>
