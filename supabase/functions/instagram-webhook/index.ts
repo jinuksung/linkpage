@@ -140,7 +140,7 @@ async function resolveAffiliateUrl(affiliateLinkId: string | null): Promise<stri
 
 async function pickRuleReply(mediaId: string | null, text: string): Promise<{ replyText: string; rule?: RuleRow }> {
   if (!mediaId || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return { replyText: AUTO_REPLY_TEXT };
+    return { replyText: "", rule: undefined };
   }
 
   try {
@@ -158,7 +158,7 @@ async function pickRuleReply(mediaId: string | null, text: string): Promise<{ re
     });
 
     const rows = (await res.json().catch(() => [])) as RuleRow[];
-    if (!Array.isArray(rows) || !rows.length) return { replyText: AUTO_REPLY_TEXT };
+    if (!Array.isArray(rows) || !rows.length) return { replyText: "", rule: undefined };
 
     const matched = rows.find((r) => {
       if (r.trigger_mode === "any") return true;
@@ -171,13 +171,13 @@ async function pickRuleReply(mediaId: string | null, text: string): Promise<{ re
       }
     });
 
-    if (!matched) return { replyText: AUTO_REPLY_TEXT };
+    if (!matched) return { replyText: "", rule: undefined };
 
     const variants = Array.isArray(matched.reply_variants)
       ? matched.reply_variants.map((v) => String(v ?? "").trim()).filter(Boolean)
       : [];
 
-    if (!variants.length) return { replyText: AUTO_REPLY_TEXT, rule: matched };
+    if (!variants.length) return { replyText: "", rule: undefined };
 
     const replyText = variants[Math.floor(Math.random() * variants.length)];
     return { replyText, rule: matched };
@@ -274,7 +274,12 @@ Deno.serve(async (req) => {
         }
 
         const { replyText, rule } = await pickRuleReply(mediaId, text);
-        const claimed = await claimCommentForReply(commentId, mediaId, rule?.id);
+        if (!rule || !replyText) {
+          processed.push({ commentId, action: "skip", reason: "no-active-rule" });
+          continue;
+        }
+
+        const claimed = await claimCommentForReply(commentId, mediaId, rule.id);
         if (!claimed) {
           processed.push({ commentId, action: "skip", reason: "duplicate-comment" });
           continue;
