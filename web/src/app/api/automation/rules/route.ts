@@ -19,7 +19,7 @@ type Row = {
   dm_button_text: string | null;
   dm_button_link_mode: "affiliate" | "manual" | null;
   dm_button_url: string | null;
-  affiliate_link_id: string;
+  affiliate_link_id: string | null;
   reply_variants: string[] | null;
   status: "active" | "inactive";
   updated_at: string;
@@ -35,7 +35,7 @@ const toItem = (r: Row) => ({
   dmButtonText: r.dm_button_text ?? "",
   dmButtonLinkMode: r.dm_button_link_mode === "manual" ? "manual" : "affiliate",
   dmButtonUrl: r.dm_button_url ?? "",
-  affiliateLinkId: r.affiliate_link_id,
+  affiliateLinkId: r.affiliate_link_id ?? "",
   replyVariants: Array.isArray(r.reply_variants) ? r.reply_variants : [],
   status: r.status,
   updatedAt: r.updated_at,
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         dm_button_text: body.dmButtonText?.trim() || null,
         dm_button_link_mode: body.dmButtonLinkMode === "manual" ? "manual" : "affiliate",
         dm_button_url: body.dmButtonLinkMode === "manual" ? (body.dmButtonUrl?.trim() || null) : null,
-        affiliate_link_id: body.affiliateLinkId,
+        affiliate_link_id: body.dmButtonLinkMode === "manual" ? null : (body.affiliateLinkId?.trim() || null),
         reply_variants: sanitizeVariants(body.replyVariants),
         status: body.status === "inactive" ? "inactive" : "active",
       })
