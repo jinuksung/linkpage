@@ -143,6 +143,13 @@ Deno.serve(async (req) => {
         if (!parsed) continue;
 
         const { commentId, fromUserId, text } = parsed;
+        const entryAccountId = String(entry?.id ?? "").trim();
+
+        // Ignore comments/replies authored by the same IG account to avoid loop.
+        if (entryAccountId && fromUserId === entryAccountId) {
+          processed.push({ commentId, action: "skip", reason: "self-comment" });
+          continue;
+        }
 
         const matched = KEYWORD_REGEX.test(text);
         if (!matched) {
@@ -162,13 +169,10 @@ Deno.serve(async (req) => {
           await sendPrivateReply(commentId, AUTO_DM_TEXT);
         } catch (e) {
           errors.push(`private_reply:${String(e)}`);
-        }
-
-        if (!errors.length) {
           try {
             await sendDm(fromUserId, AUTO_DM_TEXT);
-          } catch (e) {
-            errors.push(`dm:${String(e)}`);
+          } catch (dmErr) {
+            errors.push(`dm:${String(dmErr)}`);
           }
         }
 
