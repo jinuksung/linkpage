@@ -11,12 +11,32 @@ const KEYWORD_REGEX = new RegExp(
   Deno.env.get("IG_KEYWORD_REGEX") ?? ".*",
   "i",
 );
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "content-type": "application/json; charset=utf-8" },
   });
+}
+
+async function logWebhook(stage: string, payload: unknown, error?: string) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/ig_webhook_events`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ stage, payload, error: error ?? null }),
+    });
+  } catch {
+    // ignore
+  }
 }
 
 async function graphPost(path: string, body: Record<string, unknown>) {
@@ -70,6 +90,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => null);
     if (!body) return json({ ok: false, error: "invalid-json" }, 400);
+    await logWebhook("received", body);
 
     const processed: Array<Record<string, unknown>> = [];
     const entries = Array.isArray(body?.entry) ? body.entry : [];
@@ -101,7 +122,9 @@ Deno.serve(async (req) => {
           await replyComment(mediaId, commentId, AUTO_REPLY_TEXT);
           processed.push({ commentId, mediaId, fromUserId, action: "replied" });
         } catch (e) {
-          processed.push({ commentId, fromUserId, action: "reply-failed", error: String(e) });
+          const err = String(e);
+          await logWebhook("delivery_error", { commentId, mediaId, fromUserId, text }, err);
+          processed.push({ commentId, fromUserId, action: "reply-failed", error: err });
         }
       }
     }
