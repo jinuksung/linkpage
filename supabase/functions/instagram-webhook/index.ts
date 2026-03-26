@@ -14,12 +14,32 @@ const KEYWORD_REGEX = new RegExp(
   "i",
 );
 const DEBUG = (Deno.env.get("IG_WEBHOOK_DEBUG") ?? "false") === "true";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "content-type": "application/json; charset=utf-8" },
   });
+}
+
+async function logWebhook(stage: string, payload: unknown, error?: string) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/ig_webhook_events`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ stage, payload, error: error ?? null }),
+    });
+  } catch {
+    // no-op
+  }
 }
 
 async function graphPost(path: string, body: Record<string, unknown>) {
@@ -109,6 +129,7 @@ Deno.serve(async (req) => {
     if (DEBUG) {
       console.log("[instagram-webhook] body", JSON.stringify(body));
     }
+    await logWebhook("received", body);
 
     // Guardrails
     if (!GRAPH_ACCESS_TOKEN) {
@@ -151,6 +172,10 @@ Deno.serve(async (req) => {
           }
         }
 
+        if (errors.length) {
+          await logWebhook("delivery_error", { commentId, fromUserId, text }, errors.join(" | "));
+        }
+
         processed.push({ commentId, fromUserId, action: errors.length ? "attempted-with-errors" : "replied+dm", errors });
       }
     }
@@ -158,6 +183,7 @@ Deno.serve(async (req) => {
     return json({ ok: true, processed });
   } catch (err) {
     console.error(err);
+    await logWebhook("handler_exception", { ok: false }, String(err));
     // Meta retries aggressively if non-200. Return 200 with error payload for stability.
     return json({ ok: false, error: String(err) }, 200);
   }
