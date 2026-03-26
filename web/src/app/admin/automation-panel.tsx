@@ -248,16 +248,24 @@ export default function AutomationPanel() {
             <label>DM 버튼 문구
               <input value={selectedRule.dmButtonText ?? ""} onChange={(e) => upsertRule(selectedRule.id, { dmButtonText: e.target.value })} placeholder="지금 보러가기" />
             </label>
-            <label>DM 버튼 URL (수기입력)
-              <input value={selectedRule.dmButtonUrl ?? ""} onChange={(e) => upsertRule(selectedRule.id, { dmButtonUrl: e.target.value })} placeholder="https://example.com" />
-              <span className={styles.summaryHint}>입력 시 수기 URL 우선, 비어있으면 선택한 제휴 링크 사용</span>
-            </label>
-            <label>제휴링크 선택
-              <select value={selectedRule.affiliateLinkId} onChange={(e) => upsertRule(selectedRule.id, { affiliateLinkId: e.target.value })}>
-                <option value="">선택</option>
-                {activeLinks.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+            <label>버튼 링크 방식
+              <select value={selectedRule.dmButtonLinkMode ?? "affiliate"} onChange={(e) => upsertRule(selectedRule.id, { dmButtonLinkMode: e.target.value as "affiliate" | "manual" })}>
+                <option value="affiliate">기존 제휴링크 사용</option>
+                <option value="manual">수기 URL 입력</option>
               </select>
             </label>
+            {selectedRule.dmButtonLinkMode === "manual" ? (
+              <label>DM 버튼 URL (수기입력)
+                <input value={selectedRule.dmButtonUrl ?? ""} onChange={(e) => upsertRule(selectedRule.id, { dmButtonUrl: e.target.value })} placeholder="https://example.com" />
+              </label>
+            ) : (
+              <label>제휴링크 선택
+                <select value={selectedRule.affiliateLinkId} onChange={(e) => upsertRule(selectedRule.id, { affiliateLinkId: e.target.value })}>
+                  <option value="">선택</option>
+                  {activeLinks.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+                </select>
+              </label>
+            )}
             <label>대댓글 문구 1
               <input value={selectedRule.replyVariants[0] ?? ""} onChange={(e) => upsertRule(selectedRule.id, { replyVariants: [e.target.value, selectedRule.replyVariants[1] ?? "", selectedRule.replyVariants[2] ?? ""] })} />
             </label>

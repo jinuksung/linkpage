@@ -11,6 +11,8 @@ export type AffiliateLink = {
 
 export type TriggerMode = "keyword" | "any";
 
+export type DmButtonLinkMode = "affiliate" | "manual";
+
 export type AutomationRule = {
   id: string;
   igAccount: IgAccount;
@@ -19,6 +21,7 @@ export type AutomationRule = {
   keywordRegex: string;
   dmTemplate: string;
   dmButtonText: string;
+  dmButtonLinkMode: DmButtonLinkMode;
   dmButtonUrl: string;
   affiliateLinkId: string;
   replyVariants: string[];
@@ -43,6 +46,7 @@ export const emptyAutomationRule = (id: string): AutomationRule => ({
   keywordRegex: "",
   dmTemplate: "문의 주셔서 감사합니다! {{link}}",
   dmButtonText: "지금 보러가기",
+  dmButtonLinkMode: "affiliate",
   dmButtonUrl: "",
   affiliateLinkId: "",
   replyVariants: ["확인했어요! DM 보냈습니다 🙌"],
