@@ -46,6 +46,30 @@ async function logWebhook(stage: string, payload: unknown, error?: string) {
   }
 }
 
+async function claimCommentForReply(commentId: string, mediaId: string | null, ruleId?: string): Promise<boolean> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return true;
+  try {
+    const url = new URL(`${SUPABASE_URL}/rest/v1/ig_comment_reply_logs`);
+    url.searchParams.set("on_conflict", "comment_id");
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        Prefer: "resolution=ignore-duplicates,return=representation",
+      },
+      body: JSON.stringify([{ comment_id: commentId, media_id: mediaId, rule_id: ruleId ?? null }]),
+    });
+
+    const data = await res.json().catch(() => []);
+    return Array.isArray(data) && data.length > 0;
+  } catch {
+    return true;
+  }
+}
+
 async function pickRuleReply(mediaId: string | null, text: string): Promise<{ replyText: string; ruleId?: string }> {
   if (!mediaId || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return { replyText: AUTO_REPLY_TEXT };
@@ -181,6 +205,11 @@ Deno.serve(async (req) => {
         }
 
         const { replyText, ruleId } = await pickRuleReply(mediaId, text);
+        const claimed = await claimCommentForReply(commentId, mediaId, ruleId);
+        if (!claimed) {
+          processed.push({ commentId, action: "skip", reason: "duplicate-comment" });
+          continue;
+        }
 
         try {
           await replyComment(mediaId, commentId, replyText);
