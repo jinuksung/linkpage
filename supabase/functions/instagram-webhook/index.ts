@@ -40,8 +40,9 @@ async function graphPost(path: string, body: Record<string, unknown>) {
   return payload;
 }
 
-async function replyComment(commentId: string, message: string) {
-  return graphPost(`${commentId}/replies`, { message });
+async function replyComment(mediaId: string, commentId: string, message: string) {
+  // Instagram comment reply: POST /{ig-media-id}/comments with parent_id
+  return graphPost(`${mediaId}/comments`, { message, parent_id: commentId });
 }
 
 Deno.serve(async (req) => {
@@ -82,10 +83,11 @@ Deno.serve(async (req) => {
 
         const value = change?.value;
         const commentId = String(value?.id ?? "").trim();
+        const mediaId = String(value?.media?.id ?? "").trim();
         const fromUserId = String(value?.from?.id ?? "").trim();
         const text = String(value?.text ?? "").trim();
 
-        if (!commentId || !fromUserId) continue;
+        if (!commentId || !fromUserId || !mediaId) continue;
         if (entryAccountId && fromUserId === entryAccountId) {
           processed.push({ commentId, action: "skip", reason: "self-comment" });
           continue;
@@ -96,8 +98,8 @@ Deno.serve(async (req) => {
         }
 
         try {
-          await replyComment(commentId, AUTO_REPLY_TEXT);
-          processed.push({ commentId, fromUserId, action: "replied" });
+          await replyComment(mediaId, commentId, AUTO_REPLY_TEXT);
+          processed.push({ commentId, mediaId, fromUserId, action: "replied" });
         } catch (e) {
           processed.push({ commentId, fromUserId, action: "reply-failed", error: String(e) });
         }
