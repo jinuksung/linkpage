@@ -60,9 +60,15 @@ async function graphPost(path: string, body: Record<string, unknown>) {
   return payload;
 }
 
-async function replyComment(mediaId: string, commentId: string, message: string) {
-  // Instagram comment reply: POST /{ig-media-id}/comments with parent_id
-  return graphPost(`${mediaId}/comments`, { message, parent_id: commentId });
+async function replyComment(mediaId: string | null, commentId: string, message: string) {
+  // Try comment replies endpoint first.
+  try {
+    return await graphPost(`${commentId}/replies`, { message });
+  } catch {
+    // Fallback for IG media comments endpoint.
+    if (!mediaId) throw new Error("missing mediaId for fallback reply");
+    return graphPost(`${mediaId}/comments`, { message, reply_to_comment_id: commentId });
+  }
 }
 
 Deno.serve(async (req) => {
@@ -104,11 +110,12 @@ Deno.serve(async (req) => {
 
         const value = change?.value;
         const commentId = String(value?.id ?? "").trim();
-        const mediaId = String(value?.media?.id ?? "").trim();
+        const mediaIdRaw = String(value?.media?.id ?? "").trim();
+        const mediaId = mediaIdRaw || null;
         const fromUserId = String(value?.from?.id ?? "").trim();
         const text = String(value?.text ?? "").trim();
 
-        if (!commentId || !fromUserId || !mediaId) continue;
+        if (!commentId || !fromUserId) continue;
         if (entryAccountId && fromUserId === entryAccountId) {
           processed.push({ commentId, action: "skip", reason: "self-comment" });
           continue;
