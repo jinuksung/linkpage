@@ -38,14 +38,6 @@ const blockError = (block: Block) => {
 export default function AdminPage() {
   const [slug] = useState("/hotdeals");
   const [activeTab, setActiveTab] = useState<AdminTab>("blocks");
-
-  const switchTab = (tab: AdminTab) => {
-    setActiveTab(tab);
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", tab);
-    window.history.replaceState({}, "", url.toString());
-  };
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [products, setProducts] = useState<ProductMaster[]>([]);
   const [savedProducts, setSavedProducts] = useState<ProductMaster[]>([]);
@@ -60,14 +52,6 @@ export default function AdminPage() {
   const [dragBlockId, setDragBlockId] = useState<string | null>(null);
 
   const selected = blocks.find((b) => b.id === selectedId) ?? blocks[0];
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const tab = new URL(window.location.href).searchParams.get("tab");
-    if (tab === "blocks" || tab === "products" || tab === "automation") {
-      setActiveTab(tab);
-    }
-  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -677,9 +661,9 @@ export default function AdminPage() {
       </header>
 
       <div className={styles.tabBar}>
-        <button className={activeTab === "blocks" ? styles.tabActive : ""} onClick={() => switchTab("blocks")}>블록 편집</button>
-        <button className={activeTab === "products" ? styles.tabActive : ""} onClick={() => switchTab("products")}>상품 마스터</button>
-        <button className={activeTab === "automation" ? styles.tabActive : ""} onClick={() => switchTab("automation")}>인스타 자동화</button>
+        <button className={activeTab === "blocks" ? styles.tabActive : ""} onClick={() => setActiveTab("blocks")}>블록 편집</button>
+        <button className={activeTab === "products" ? styles.tabActive : ""} onClick={() => setActiveTab("products")}>상품 마스터</button>
+        <button className={activeTab === "automation" ? styles.tabActive : ""} onClick={() => setActiveTab("automation")}>인스타 자동화</button>
       </div>
 
       {activeTab === "blocks" ? (
@@ -709,11 +693,20 @@ export default function AdminPage() {
                   }}
                   onDragEnd={() => setDragBlockId(null)}
                 >
-                  <button
+                  <div
                     className={styles.mobileBlockHead}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       setSelectedId(b.id);
                       setExpandedBlockId((prev) => (prev === b.id ? null : b.id));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedId(b.id);
+                        setExpandedBlockId((prev) => (prev === b.id ? null : b.id));
+                      }
                     }}
                   >
                     <span className={styles.mobileDrag}>⋮⋮</span>
@@ -726,7 +719,7 @@ export default function AdminPage() {
                     >
                       <path d="M7 10l5 5 5-5" />
                     </svg>
-                  </button>
+                  </div>
 
                   <div className={styles.mobileCardActions}>
                     <button
