@@ -538,6 +538,11 @@
   justify-content: space-between;
   gap: 10px;
   z-index: 40;
+  pointer-events: none;
+}
+
+.mobileBottomActions > * {
+  pointer-events: auto;
 }
 
 .hiddenOnPreview {
