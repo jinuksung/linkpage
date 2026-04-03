@@ -316,6 +316,10 @@ export default function AdminPage() {
     return hotdealBlocks
       .slice()
       .sort((a, b) => {
+        const aIsTemp = a.id.startsWith("cb_");
+        const bIsTemp = b.id.startsWith("cb_");
+        if (aIsTemp !== bIsTemp) return aIsTemp ? -1 : 1;
+
         const aSeq = a.sequenceNo;
         const bSeq = b.sequenceNo;
         const aHas = aSeq != null;
@@ -338,7 +342,6 @@ export default function AdminPage() {
   const addHotdealBlock = () => {
     const id = nextId("cb");
     setHotdealBlocks((prev) => [
-      ...prev,
       {
         id,
         sequenceNo: null,
@@ -348,9 +351,10 @@ export default function AdminPage() {
         imageUrl: "",
         priceText: "",
         discountText: "",
-        sortOrder: prev.length,
+        sortOrder: 0,
         isActive: true,
       },
+      ...prev.map((b, idx) => ({ ...b, sortOrder: idx + 1 })),
     ]);
     setCollapsedHotdealIds((prev) => ({ ...prev, [id]: true }));
     setSaveState("dirty");
@@ -825,7 +829,7 @@ export default function AdminPage() {
     <div className={styles.panel}>
       <div className={styles.panelHead}>
         <h3>핫딜 블록</h3>
-        <button className={styles.secondaryBtn} onClick={addHotdealBlock}>
+        <button type="button" className={styles.secondaryBtn} onClick={addHotdealBlock}>
           + 핫딜 추가
         </button>
       </div>
@@ -902,10 +906,10 @@ export default function AdminPage() {
                   </label>
                 </div> : null}
                 {!collapsed ? <div className={styles.rowActions}>
-                  <button className={styles.productSaveBtn} onClick={() => saveHotdealBlock(b.id)}>저장</button>
-                  <button onClick={() => moveHotdealBlock(b.id, -1)}>위로</button>
-                  <button onClick={() => moveHotdealBlock(b.id, 1)}>아래로</button>
-                  <button className={styles.dangerBtn} onClick={() => removeHotdealBlock(b.id)}>삭제</button>
+                  <button type="button" className={styles.productSaveBtn} onClick={() => saveHotdealBlock(b.id)}>저장</button>
+                  <button type="button" onClick={() => moveHotdealBlock(b.id, -1)}>위로</button>
+                  <button type="button" onClick={() => moveHotdealBlock(b.id, 1)}>아래로</button>
+                  <button type="button" className={styles.dangerBtn} onClick={() => removeHotdealBlock(b.id)}>삭제</button>
                 </div> : null}
               </li>
             );
