@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 type Row = {
   id: string;
+  sequence_no: number;
   name: string;
   product_key: string;
   brand: string | null;
@@ -25,6 +26,7 @@ const getClient = () => {
 
 const toItem = (r: Row) => ({
   id: r.id,
+  sequenceNo: r.sequence_no,
   name: r.name ?? "",
   seedKeyword: r.product_key ?? "",
   priceAnchor: r.price_anchor == null ? "" : String(r.price_anchor),
@@ -48,8 +50,8 @@ export async function GET() {
     const supabase = getClient();
     const { data, error } = await supabase
       .from("products_master")
-      .select("id,name,product_key,brand,model_no,status,price_anchor,default_image_url,updated_at")
-      .order("updated_at", { ascending: false });
+      .select("id,sequence_no,name,product_key,brand,model_no,status,price_anchor,default_image_url,updated_at")
+      .order("sequence_no", { ascending: true });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ items: (data as Row[]).map(toItem) });
@@ -78,7 +80,7 @@ export async function POST(req: Request) {
         price_anchor: parsed,
         status: body.status === "inactive" ? "inactive" : "active",
       })
-      .select("id,name,product_key,brand,model_no,status,price_anchor,default_image_url,updated_at")
+      .select("id,sequence_no,name,product_key,brand,model_no,status,price_anchor,default_image_url,updated_at")
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -2,13 +2,28 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./page.module.css";
-import { initialBlocks, type Block, type SingleLinkBlock } from "../../lib/page-data";
+import { cloneBlocks, initialBlocks, normalizeBlocks, type Block, type SingleLinkBlock } from "../../lib/page-data";
 import { emptyProduct, type ProductMaster } from "../../lib/product-master";
 import AutomationPanel from "./automation-panel";
 
 type SaveState = "saved" | "dirty" | "saving" | "error";
 type AdminTab = "blocks" | "products" | "automation";
+type HotdealBlock = {
+  id: string;
+  sequenceNo: number | null;
+  title: string;
+  subtitle: string;
+  linkUrl: string;
+  imageUrl: string;
+  priceText: string;
+  discountText: string;
+  sortOrder: number;
+  isActive: boolean;
+};
 
+const profileDefaults = cloneBlocks(initialBlocks).filter(
+  (b): b is Extract<Block, { type: "profile" }> => b.type === "profile",
+);
 
 const nextId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -38,13 +53,17 @@ const blockError = (block: Block) => {
 export default function AdminPage() {
   const [slug] = useState("/hotdeals");
   const [activeTab, setActiveTab] = useState<AdminTab>("blocks");
-  const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
+  const [blocks, setBlocks] = useState<Block[]>(profileDefaults);
   const [products, setProducts] = useState<ProductMaster[]>([]);
   const [savedProducts, setSavedProducts] = useState<ProductMaster[]>([]);
   const [productLoading, setProductLoading] = useState(true);
+  const [hotdealLoading, setHotdealLoading] = useState(true);
+  const [hotdealBlocks, setHotdealBlocks] = useState<HotdealBlock[]>([]);
+  const [collapsedHotdealIds, setCollapsedHotdealIds] = useState<Record<string, boolean>>({});
+  const [blockLoading, setBlockLoading] = useState(true);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productQuery, setProductQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(initialBlocks[0].id);
+  const [selectedId, setSelectedId] = useState(profileDefaults[0]?.id ?? "b_profile");
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [viewport, setViewport] = useState("390px");
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
@@ -52,6 +71,29 @@ export default function AdminPage() {
   const [dragBlockId, setDragBlockId] = useState<string | null>(null);
 
   const selected = blocks.find((b) => b.id === selectedId) ?? blocks[0];
+
+  useEffect(() => {
+    let alive = true;
+    const loadBlocks = async () => {
+      try {
+        const res = await fetch(`/api/page-config?slug=${encodeURIComponent(slug)}`, { cache: "no-store" });
+        const json = await res.json();
+        if (!alive) return;
+        const fetched = (normalizeBlocks(json?.blocks) ?? profileDefaults).filter((b) => b.type === "profile");
+        setBlocks(fetched);
+        setSelectedId((prev) => (fetched.some((b) => b.id === prev) ? prev : fetched[0]?.id ?? profileDefaults[0]?.id ?? "b_profile"));
+      } catch {
+        if (!alive) return;
+        setBlocks(profileDefaults);
+      } finally {
+        if (alive) setBlockLoading(false);
+      }
+    };
+    loadBlocks();
+    return () => {
+      alive = false;
+    };
+  }, [slug]);
 
   useEffect(() => {
     let alive = true;
@@ -73,6 +115,28 @@ export default function AdminPage() {
       }
     };
     load();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const loadHotdeals = async () => {
+      try {
+        const res = await fetch("/api/content-blocks", { cache: "no-store" });
+        const json = await res.json();
+        if (!alive) return;
+        const list: HotdealBlock[] = Array.isArray(json?.items) ? json.items : [];
+        setHotdealBlocks(list.sort((a, b) => a.sortOrder - b.sortOrder));
+      } catch {
+        if (!alive) return;
+        setHotdealBlocks([]);
+      } finally {
+        if (alive) setHotdealLoading(false);
+      }
+    };
+    loadHotdeals();
     return () => {
       alive = false;
     };
@@ -164,13 +228,49 @@ export default function AdminPage() {
 
   const save = async () => {
     const hasError = blocks.some((b) => !!blockError(b));
-    if (hasError) {
+    const hasHotdealError = hotdealBlocks.some((b) => !/^https?:\/\//.test((b.linkUrl || "").trim()));
+    if (hasError || hasHotdealError) {
       setSaveState("error");
       return;
     }
+
     setSaveState("saving");
-    await new Promise((r) => setTimeout(r, 700));
-    setSaveState("saved");
+    try {
+      const res = await fetch("/api/page-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, blocks }),
+      });
+      if (!res.ok) {
+        setSaveState("error");
+        return;
+      }
+      const json = await res.json();
+      const saved = (normalizeBlocks(json?.blocks) ?? cloneBlocks(initialBlocks)).filter((b) => b.type === "profile");
+      setBlocks(saved);
+      setSelectedId((prev) => (saved.some((b) => b.id === prev) ? prev : saved[0]?.id ?? initialBlocks[0].id));
+
+      const hotdealRes = await fetch("/api/content-blocks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: hotdealBlocks.map((b, index) => ({
+            ...b,
+            sortOrder: index,
+          })),
+        }),
+      });
+      if (!hotdealRes.ok) {
+        setSaveState("error");
+        return;
+      }
+      const hotdealJson = await hotdealRes.json();
+      const refreshed: HotdealBlock[] = Array.isArray(hotdealJson?.items) ? hotdealJson.items : [];
+      setHotdealBlocks(refreshed.sort((a, b) => a.sortOrder - b.sortOrder));
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
   };
 
   const statusText =
@@ -191,6 +291,181 @@ export default function AdminPage() {
   }, [products, productQuery]);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
+  const previewProducts = useMemo(
+    () => {
+      return hotdealBlocks
+        .filter((b) => b.isActive)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((b) => {
+          return {
+            id: b.id,
+            title: b.title || "(이름 없음)",
+            subtitle: b.subtitle,
+            sequenceNo: b.sequenceNo ?? null,
+            thumbAnchor: b.imageUrl || "",
+            priceText: b.priceText || "",
+            discountText: b.discountText || "",
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => !!item);
+    },
+    [hotdealBlocks],
+  );
+
+  const hotdealBlocksBySequenceDesc = useMemo(() => {
+    return hotdealBlocks
+      .slice()
+      .sort((a, b) => {
+        const aSeq = a.sequenceNo;
+        const bSeq = b.sequenceNo;
+        const aHas = aSeq != null;
+        const bHas = bSeq != null;
+        if (aHas && bHas && aSeq !== bSeq) return bSeq - aSeq;
+        if (aHas !== bHas) return aHas ? -1 : 1;
+        return a.sortOrder - b.sortOrder;
+      });
+  }, [hotdealBlocks]);
+
+  const formatPrice = (value: string | number) => {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "";
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return raw;
+    const int = Number.isInteger(num);
+    return `${int ? num.toLocaleString("ko-KR") : num.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`;
+  };
+
+  const addHotdealBlock = () => {
+    const id = nextId("cb");
+    setHotdealBlocks((prev) => [
+      ...prev,
+      {
+        id,
+        sequenceNo: null,
+        title: "",
+        subtitle: "",
+        linkUrl: "https://",
+        imageUrl: "",
+        priceText: "",
+        discountText: "",
+        sortOrder: prev.length,
+        isActive: true,
+      },
+    ]);
+    setCollapsedHotdealIds((prev) => ({ ...prev, [id]: true }));
+    setSaveState("dirty");
+  };
+
+  const updateHotdealBlock = (id: string, patch: Partial<HotdealBlock>) => {
+    setHotdealBlocks((prev) =>
+      prev.map((b, idx) => (b.id === id ? { ...b, ...patch, sortOrder: idx } : { ...b, sortOrder: idx })),
+    );
+    setSaveState("dirty");
+  };
+
+  const removeHotdealBlock = (id: string) => {
+    if (!id.startsWith("cb_")) {
+      fetch(`/api/content-blocks/${id}`, { method: "DELETE" }).catch(() => undefined);
+    }
+    setHotdealBlocks((prev) => prev.filter((b) => b.id !== id).map((b, idx) => ({ ...b, sortOrder: idx })));
+    setCollapsedHotdealIds((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setSaveState("dirty");
+  };
+
+  const saveHotdealBlock = async (id: string) => {
+    const target = hotdealBlocks.find((b) => b.id === id);
+    if (!target) return;
+    if (!/^https?:\/\//.test((target.linkUrl || "").trim())) {
+      setSaveState("error");
+      return;
+    }
+
+    setSaveState("saving");
+    try {
+      const isTemp = target.id.startsWith("cb_");
+      const endpoint = isTemp ? "/api/content-blocks" : `/api/content-blocks/${target.id}`;
+      const method = isTemp ? "POST" : "PATCH";
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...target,
+          sortOrder:
+            hotdealBlocks
+              .slice()
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .findIndex((b) => b.id === id) ?? target.sortOrder,
+        }),
+      });
+      if (!res.ok) {
+        setSaveState("error");
+        return;
+      }
+      const json = await res.json();
+      const saved = json?.item as HotdealBlock;
+      if (!saved?.id) {
+        setSaveState("error");
+        return;
+      }
+      setHotdealBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, ...saved } : b)));
+      setCollapsedHotdealIds((prev) => {
+        if (saved.id === id) return prev;
+        const next = { ...prev };
+        if (id in next) {
+          next[saved.id] = next[id];
+          delete next[id];
+        }
+        return next;
+      });
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  };
+
+  const moveHotdealBlock = (id: string, dir: -1 | 1) => {
+    setHotdealBlocks((prev) => {
+      const idx = prev.findIndex((b) => b.id === id);
+      const to = idx + dir;
+      if (idx < 0 || to < 0 || to >= prev.length) return prev;
+      const copied = [...prev];
+      const [picked] = copied.splice(idx, 1);
+      copied.splice(to, 0, picked);
+      return copied.map((b, order) => ({ ...b, sortOrder: order }));
+    });
+    setSaveState("dirty");
+  };
+
+  const uploadHotdealImage = async (id: string, file: File | null) => {
+    if (!file) return;
+    try {
+      setSaveState("saving");
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/content-block-image", {
+        method: "POST",
+        body: form,
+      });
+      if (!res.ok) {
+        setSaveState("error");
+        return;
+      }
+      const json = await res.json();
+      const url = String(json?.url ?? "").trim();
+      if (!url) {
+        setSaveState("error");
+        return;
+      }
+      updateHotdealBlock(id, { imageUrl: url });
+      setSaveState("dirty");
+    } catch {
+      setSaveState("error");
+    }
+  };
 
   const upsertProduct = (id: string, patch: Partial<ProductMaster>) => {
     setProducts((prev) =>
@@ -401,25 +676,30 @@ export default function AdminPage() {
     <div className={styles.panel}>
       <div className={styles.panelHead}>
         <h3>블록 리스트</h3>
-        <div className={styles.addMenu}>
-          <button onClick={() => addBlock("profile")}>+ 프로필</button>
-          <button onClick={() => addBlock("single")}>+ 단일링크</button>
-          <button onClick={() => addBlock("group")}>+ 그룹링크</button>
-        </div>
+        <span className={styles.summaryHint}>프로필 블록만 사용</span>
       </div>
 
       <ul className={styles.blockList}>
-        {blocks.map((b) => {
+        {blockLoading ? <li className={styles.blockItem}>불러오는 중...</li> : null}
+        {!blockLoading && blocks.map((b) => {
           const error = blockError(b);
+          const canReorder = b.type !== "profile";
           return (
             <li
               key={b.id}
               className={`${styles.blockItem} ${selectedId === b.id ? styles.active : ""}`}
               onClick={() => setSelectedId(b.id)}
-              draggable
-              onDragStart={() => setDragBlockId(b.id)}
-              onDragOver={(e) => e.preventDefault()}
+              draggable={canReorder}
+              onDragStart={() => {
+                if (!canReorder) return;
+                setDragBlockId(b.id);
+              }}
+              onDragOver={(e) => {
+                if (!canReorder) return;
+                e.preventDefault();
+              }}
               onDrop={() => {
+                if (!canReorder) return;
                 if (dragBlockId) reorderBlocks(dragBlockId, b.id);
                 setDragBlockId(null);
               }}
@@ -440,30 +720,14 @@ export default function AdminPage() {
               <div className={styles.blockSub}>{b.title || "(제목 없음)"}</div>
               {error ? <span className={styles.errorBadge}>{error}</span> : null}
               <div className={styles.rowActions}>
-                {b.type === "single" ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedId(b.id);
-                      setExpandedBlockId((prev) => (prev === b.id ? null : b.id));
-                    }}
-                  >
-                    {expandedBlockId === b.id ? "접기" : "카드 편집"}
-                  </button>
-                ) : (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedId(b.id);
-                    }}
-                  >
-                    선택
-                  </button>
-                )}
-                <button onClick={(e) => { e.stopPropagation(); duplicate(b.id); }}>복제</button>
-                {b.type !== "profile" ? (
-                  <button onClick={(e) => { e.stopPropagation(); remove(b.id); }}>삭제</button>
-                ) : null}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedId(b.id);
+                  }}
+                >
+                  선택
+                </button>
               </div>
               {expandedBlockId === b.id ? (
                 <div className={styles.inlineEditor} onClick={(e) => e.stopPropagation()}>
@@ -528,46 +792,126 @@ export default function AdminPage() {
       </div>
       <div className={styles.previewShell} style={{ width: viewport }}>
         <div className={styles.previewInner}>
-          {visibleBlocks.map((b) =>
-            b.type === "profile" ? (
+          {visibleBlocks
+            .filter((b): b is Extract<Block, { type: "profile" }> => b.type === "profile")
+            .map((b) => (
               <section key={b.id} className={styles.previewProfile}>
                 <img src={b.imageUrl} alt={b.title} />
                 <h4>{b.title}</h4>
                 <p>{b.intro}</p>
                 {b.notice ? <small>{b.notice}</small> : null}
               </section>
-            ) : b.type === "single" ? (
-              <article
-                key={b.id}
-                className={`${styles.previewCard} ${
-                  b.size === "small" ? styles.previewCardSmall : b.size === "large" ? styles.previewCardLarge : styles.previewCardMedium
-                }`}
-              >
-                <img src={b.thumbnailUrl} alt={b.title} />
-                <div>
-                  {b.badge ? <em>{b.badge}</em> : null}
-                  <strong>{b.title}</strong>
-                  {b.subtext ? <p>{b.subtext}</p> : null}
-                  <div className={styles.priceLine}>
-                    {b.discount ? <span>{b.discount}</span> : null}
-                    {b.price ? <b>{b.price}</b> : null}
-                  </div>
+            ))}
+
+          {previewProducts.map((p) => (
+            <article key={p.id} className={`${styles.previewCard} ${styles.previewCardMedium}`}>
+              <img src={p.thumbAnchor || "https://picsum.photos/seed/new-product/240/240"} alt={p.title || "(이름 없음)"} />
+              <div>
+                <strong>{`${p.sequenceNo ?? "-"}. ${p.title || "(이름 없음)"}`}</strong>
+                {p.subtitle ? <p>{p.subtitle}</p> : null}
+                <div className={styles.priceLine}>
+                  {p.discountText ? <span>{p.discountText}</span> : null}
+                  {p.priceText ? <b>{formatPrice(p.priceText)}</b> : null}
                 </div>
-              </article>
-            ) : (
-              <section key={b.id} className={styles.previewGroup}>
-                <h4>{b.title}</h4>
-                {b.description ? <p>{b.description}</p> : null}
-                <ul>
-                  {b.links.map((l) => (
-                    <li key={l.id}>{l.title || "(제목 없음)"}</li>
-                  ))}
-                </ul>
-              </section>
-            ),
-          )}
+              </div>
+            </article>
+          ))}
         </div>
       </div>
+    </div>
+  );
+
+  const panelHotdealBlocks = (
+    <div className={styles.panel}>
+      <div className={styles.panelHead}>
+        <h3>핫딜 블록</h3>
+        <button className={styles.secondaryBtn} onClick={addHotdealBlock}>
+          + 핫딜 추가
+        </button>
+      </div>
+      {hotdealLoading ? (
+        <p>불러오는 중...</p>
+      ) : hotdealBlocks.length === 0 ? (
+        <p>등록된 핫딜 블록이 없습니다.</p>
+      ) : (
+        <ul className={styles.blockList}>
+          {hotdealBlocksBySequenceDesc.map((b) => {
+            const collapsed = collapsedHotdealIds[b.id] ?? true;
+            return (
+              <li key={b.id} className={styles.blockItem}>
+                <div className={styles.blockMain}>
+                  <button
+                    type="button"
+                    className={styles.hotdealToggleBtn}
+                    onClick={() =>
+                      setCollapsedHotdealIds((prev) => ({
+                        ...prev,
+                        [b.id]: !prev[b.id],
+                      }))
+                    }
+                  >
+                    <span className={styles.hotdealToggleTitleRow}>
+                      <span className={styles.statusPill}>{b.isActive ? "active" : "inactive"}</span>
+                      <strong>{b.sequenceNo ?? "-"}. {b.title || "(제목 없음)"}</strong>
+                    </span>
+                    <span className={styles.hotdealToggleIcon}>{collapsed ? "▸" : "▾"}</span>
+                  </button>
+                </div>
+                {!collapsed ? <div className={styles.formGrid}>
+                  <label>
+                    제휴 링크(URL)
+                    <input value={b.linkUrl} onChange={(e) => updateHotdealBlock(b.id, { linkUrl: e.target.value })} />
+                  </label>
+                  <label>
+                    노출 제목
+                    <input value={b.title} onChange={(e) => updateHotdealBlock(b.id, { title: e.target.value })} />
+                  </label>
+                  <label>
+                    서브텍스트
+                    <input value={b.subtitle} onChange={(e) => updateHotdealBlock(b.id, { subtitle: e.target.value })} />
+                  </label>
+                  <div className={styles.thumbInline}>
+                    <label>
+                      썸네일 업로드
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => uploadHotdealImage(b.id, e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                    {b.imageUrl ? (
+                      <button className={styles.dangerBtn} type="button" onClick={() => updateHotdealBlock(b.id, { imageUrl: "" })}>제거</button>
+                    ) : null}
+                    {b.imageUrl ? (
+                      <div className={styles.thumbPreview}>
+                        <img src={b.imageUrl} alt="업로드 썸네일 미리보기" />
+                      </div>
+                    ) : null}
+                  </div>
+                  <label>
+                    가격 텍스트
+                    <input value={b.priceText} onChange={(e) => updateHotdealBlock(b.id, { priceText: e.target.value })} />
+                  </label>
+                  <label>
+                    할인 텍스트
+                    <input value={b.discountText} onChange={(e) => updateHotdealBlock(b.id, { discountText: e.target.value })} />
+                  </label>
+                  <label className={styles.checkLabel}>
+                    <input type="checkbox" checked={b.isActive} onChange={(e) => updateHotdealBlock(b.id, { isActive: e.target.checked })} />
+                    활성화
+                  </label>
+                </div> : null}
+                {!collapsed ? <div className={styles.rowActions}>
+                  <button className={styles.productSaveBtn} onClick={() => saveHotdealBlock(b.id)}>저장</button>
+                  <button onClick={() => moveHotdealBlock(b.id, -1)}>위로</button>
+                  <button onClick={() => moveHotdealBlock(b.id, 1)}>아래로</button>
+                  <button className={styles.dangerBtn} onClick={() => removeHotdealBlock(b.id)}>삭제</button>
+                </div> : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 
@@ -596,7 +940,7 @@ export default function AdminPage() {
                   onClick={() => setSelectedProductId(p.id)}
                 >
                   <div className={styles.blockMain}>
-                    <strong>{p.name || "(이름 없음)"}</strong>
+                    <strong>{p.sequenceNo ? `${p.sequenceNo}. ${p.name || "(이름 없음)"}` : p.name || "(이름 없음)"}</strong>
                     <span className={styles.statusPill}>{p.status}</span>
                   </div>
                   <div className={styles.blockSub}>{p.seedKeyword || "seed_keyword 미입력"}</div>
@@ -610,6 +954,7 @@ export default function AdminPage() {
           <div className={styles.panelHead}><h3>상품 편집</h3></div>
           {selectedProduct ? (
             <div className={styles.formGrid}>
+              <label>시퀀스 번호<input value={selectedProduct.sequenceNo ?? ""} readOnly /></label>
               <label>상품명<input value={selectedProduct.name} onChange={(e) => upsertProduct(selectedProduct.id, { name: e.target.value })} /></label>
               <label>seed_keyword<input value={selectedProduct.seedKeyword} onChange={(e) => upsertProduct(selectedProduct.id, { seedKeyword: e.target.value })} /></label>
               <label>price_anchor
@@ -673,6 +1018,9 @@ export default function AdminPage() {
             {panelEditor}
             {panelPreview}
           </div>
+          <div className={styles.desktopGrid}>
+            {panelHotdealBlocks}
+          </div>
 
           <div className={styles.mobileOnly}>
             <header className={styles.mobileHeader}>
@@ -684,15 +1032,32 @@ export default function AdminPage() {
                 <article
                   key={b.id}
                   className={styles.mobileBlockCard}
-                  draggable
-                  onDragStart={() => setDragBlockId(b.id)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => {
-                    if (dragBlockId) reorderBlocks(dragBlockId, b.id);
-                    setDragBlockId(null);
-                  }}
-                  onDragEnd={() => setDragBlockId(null)}
                 >
+                  {b.type !== "profile" ? (
+                    <div className={styles.mobileDragRow}>
+                      <button
+                        type="button"
+                        className={styles.mobileMoveBtn}
+                        onClick={() => {
+                          const idx = blocks.findIndex((x) => x.id === b.id);
+                          if (idx > 0) reorderBlocks(b.id, blocks[idx - 1].id);
+                        }}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.mobileMoveBtn}
+                        onClick={() => {
+                          const idx = blocks.findIndex((x) => x.id === b.id);
+                          if (idx >= 0 && idx < blocks.length - 1) reorderBlocks(b.id, blocks[idx + 1].id);
+                        }}
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  ) : null}
+
                   <div
                     className={styles.mobileBlockHead}
                     role="button"
@@ -722,29 +1087,11 @@ export default function AdminPage() {
                   </div>
 
                   <div className={styles.mobileCardActions}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const idx = blocks.findIndex((x) => x.id === b.id);
-                        if (idx > 0) reorderBlocks(b.id, blocks[idx - 1].id);
-                      }}
-                    >
-                      위로
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const idx = blocks.findIndex((x) => x.id === b.id);
-                        if (idx >= 0 && idx < blocks.length - 1) reorderBlocks(b.id, blocks[idx + 1].id);
-                      }}
-                    >
-                      아래로
-                    </button>
                     {b.type !== "profile" ? (
                       <button
+                        type="button"
                         className={styles.dangerBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={() => {
                           remove(b.id);
                         }}
                       >
@@ -796,7 +1143,6 @@ export default function AdminPage() {
               <button className={styles.previewFab} onClick={() => setMobilePreviewOpen((v) => !v)}>
                 👁 미리보기
               </button>
-              <button className={styles.addFab} onClick={() => addBlock("single")}>＋ 블록 추가</button>
             </div>
 
             {mobilePreviewOpen ? (
@@ -805,12 +1151,13 @@ export default function AdminPage() {
                 <div className={styles.mobilePreviewWrap}>{panelPreview}</div>
               </div>
             ) : null}
+
+            {panelHotdealBlocks}
           </div>
 
           <footer className={styles.footerBar}>
             <span>{saveState === "dirty" ? "변경사항 있음" : statusText}</span>
             <div>
-              <button className={styles.secondaryBtn} onClick={() => addBlock("single")}>+ 블록 추가</button>
               <button className={styles.primaryBtn} onClick={save}>저장</button>
             </div>
           </footer>

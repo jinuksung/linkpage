@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 type Row = {
   id: string;
+  sequence_no: number;
   name: string;
   product_key: string;
   brand: string | null;
@@ -25,6 +26,7 @@ const getClient = () => {
 
 const toItem = (r: Row) => ({
   id: r.id,
+  sequenceNo: r.sequence_no,
   name: r.name ?? "",
   seedKeyword: r.product_key ?? "",
   priceAnchor: r.price_anchor == null ? "" : String(r.price_anchor),
@@ -65,7 +67,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         status: body.status === "inactive" ? "inactive" : "active",
       })
       .eq("id", id)
-      .select("id,name,product_key,brand,model_no,status,price_anchor,default_image_url,updated_at")
+      .select("id,sequence_no,name,product_key,brand,model_no,status,price_anchor,default_image_url,updated_at")
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

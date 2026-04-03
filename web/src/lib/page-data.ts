@@ -92,3 +92,92 @@ export const initialBlocks: Block[] = [
     ],
   },
 ];
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const asString = (value: unknown, fallback = "") =>
+  typeof value === "string" ? value : fallback;
+
+export const cloneBlocks = (blocks: Block[]) =>
+  blocks.map((block) =>
+    block.type === "profile"
+      ? { ...block }
+      : block.type === "single"
+        ? { ...block }
+        : { ...block, links: block.links.map((link) => ({ ...link })) },
+  );
+
+export const normalizeBlocks = (value: unknown): Block[] | null => {
+  if (!Array.isArray(value)) return null;
+
+  const parsed = value.map((raw): Block | null => {
+    if (!isRecord(raw) || typeof raw.id !== "string") return null;
+    const visible = typeof raw.visible === "boolean" ? raw.visible : true;
+
+    if (raw.type === "profile") {
+      return {
+        id: raw.id,
+        type: "profile",
+        visible,
+        title: asString(raw.title),
+        intro: asString(raw.intro),
+        notice: asString(raw.notice),
+        imageUrl: asString(raw.imageUrl),
+      };
+    }
+
+    if (raw.type === "single") {
+      const size =
+        raw.size === "small" || raw.size === "medium" || raw.size === "large"
+          ? raw.size
+          : "medium";
+      return {
+        id: raw.id,
+        type: "single",
+        visible,
+        title: asString(raw.title),
+        url: asString(raw.url),
+        thumbnailUrl: asString(raw.thumbnailUrl),
+        badge: asString(raw.badge),
+        subtext: asString(raw.subtext),
+        price: asString(raw.price),
+        discount: asString(raw.discount),
+        buttonText: asString(raw.buttonText, "보러가기"),
+        size,
+      };
+    }
+
+    if (raw.type === "group") {
+      if (!Array.isArray(raw.links)) return null;
+      const links = raw.links
+        .map((link): LinkItem | null => {
+          if (!isRecord(link) || typeof link.id !== "string") return null;
+          return {
+            id: link.id,
+            title: asString(link.title),
+            url: asString(link.url),
+          };
+        })
+        .filter((link): link is LinkItem => !!link);
+
+      return {
+        id: raw.id,
+        type: "group",
+        visible,
+        title: asString(raw.title),
+        description: asString(raw.description),
+        expandedByDefault:
+          typeof raw.expandedByDefault === "boolean"
+            ? raw.expandedByDefault
+            : true,
+        links,
+      };
+    }
+
+    return null;
+  });
+
+  if (parsed.some((block) => !block)) return null;
+  return parsed as Block[];
+};

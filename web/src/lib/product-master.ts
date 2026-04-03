@@ -1,5 +1,6 @@
 export type ProductMaster = {
   id: string;
+  sequenceNo: number | null;
   name: string;
   seedKeyword: string;
   priceAnchor: string;
@@ -12,6 +13,7 @@ export type ProductMaster = {
 
 export const emptyProduct = (id: string): ProductMaster => ({
   id,
+  sequenceNo: null,
   name: "",
   seedKeyword: "",
   priceAnchor: "",
